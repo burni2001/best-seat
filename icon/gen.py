@@ -1,4 +1,4 @@
-# Erzeugt Banner (320x180) und Symbol (192x192) für den Launcher "Apple TV Home".
+# Erzeugt Banner (320x180) und Symbol (192x192) für den Launcher (alte Kachel bis 0.18.12).
 import sys
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 out = sys.argv[1]

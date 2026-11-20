@@ -28,7 +28,7 @@ fi
 
 "$BT/aapt2" link --manifest "$DIR/AndroidManifest.xml" -I "$ANDROID_JAR" "$OUT/res.zip" \
   --min-sdk-version 26 --target-sdk-version 34 \
-  --version-code 104 --version-name 0.18.12 \
+  --version-code 105 --version-name 0.18.13 \
   -o "$OUT/unsigned.apk"
 
 find "$DIR/src" -name '*.java' -exec \
