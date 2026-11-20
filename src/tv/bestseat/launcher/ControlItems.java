@@ -25,7 +25,7 @@ final class ControlItems {
         switch (id) {
             case SCREENSAVER: return "Screensaver";
             case AMBILIGHT: return "Ambilight";
-            case HUE_SYNC: return "Hue Sync";
+            case HUE_SYNC: return "Ambience";
             case INPUTS: return "Inputs";
             case PICTURE: return "Picture";
             case SOUND: return "Sound";

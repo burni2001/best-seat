@@ -31,7 +31,7 @@ import java.util.List;
 
 /**
  * Kontrollzentrum: Milchglas-Leiste rechts über der laufenden App (wie tvOS).
- * Kacheln für Schoner, Ambilight, Hue Sync, Bild, Ton, Eingänge, App Switcher, VPN, Einstellungen.
+ * Kacheln für Schoner, Ambilight, Ambience (Hue Sync), Bild, Ton, Eingänge, App Switcher, VPN, Einstellungen.
  * Schließt mit Zurück/Menü, nach jeder Aktion und nach 30 s ohne Taste (nichts bleibt lange stehen).
  */
 public final class ControlCenterActivity extends Activity {
@@ -560,12 +560,12 @@ public final class ControlCenterActivity extends Activity {
         if (icon != null) icon.setColor(iconColor(id, tile != null && tile.isFocused()));
     }
 
-    /** Ambilight / Hue Sync im Hintergrund schalten (Hue-Sync-App) und den Zustand nachfragen. */
+    /** Ambilight / Hue Sync im Hintergrund schalten (App Ambience) und den Zustand nachfragen. */
     private void toggleHue(String id, String action) {
         try {
             sendBroadcast(new Intent(action).setComponent(HUE_RECEIVER));
         } catch (RuntimeException e) {
-            Toast.makeText(this, "Hue Sync app not available", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Ambience app not available", Toast.LENGTH_SHORT).show();
             return;
         }
         // Sofort umfärben, die Antwort der App bestätigt oder korrigiert es.
@@ -574,7 +574,7 @@ public final class ControlCenterActivity extends Activity {
         queryHueState(5000);
     }
 
-    /** Zustand von Hue Sync und Ambilight bei der Hue-Sync-App abfragen (ab Hue Sync 1.9.7). */
+    /** Zustand von Hue Sync und Ambilight bei der App Ambience abfragen (ab Hue Sync 1.9.7). */
     private void queryHueState(long delayMs) {
         if (!tiles.containsKey(ControlItems.AMBILIGHT) && !tiles.containsKey(ControlItems.HUE_SYNC)) return;
         handler.postDelayed(() -> {
@@ -704,7 +704,7 @@ public final class ControlCenterActivity extends Activity {
                 // Schalten per Broadcast: die Leiste bleibt offen, das Symbol wird blau, wenn an.
                 return cell("Ambilight", "On / off", () -> toggleHue(ControlItems.AMBILIGHT, Companions.HUESYNC + ".AMBILIGHT"));
             case ControlItems.HUE_SYNC:
-                return cell("Hue Sync", "On / off", () -> toggleHue(ControlItems.HUE_SYNC, Companions.HUESYNC + ".TOGGLE"));
+                return cell("Ambience", "On / off", () -> toggleHue(ControlItems.HUE_SYNC, Companions.HUESYNC + ".TOGGLE"));
             case ControlItems.INPUTS:
                 return cell("Inputs", "HDMI and devices", this::showInputs);
             case ControlItems.PICTURE:

@@ -259,7 +259,7 @@ public final class SettingsActivity extends Activity {
     private void externalSettings() {
         String[][] apps = {
                 {Companions.AIRPLAY, "AirPlay", "Open the AirPlay settings."},
-                {Companions.HUESYNC, "Hue Sync", "Open the Hue Sync settings."},
+                {Companions.HUESYNC, "Ambience", "Open the Ambience settings."},
                 {Companions.TVHELPER, "Google TV Helper", "Open the Google TV Helper settings."}};
         boolean any = false;
         for (String[] app : apps) {

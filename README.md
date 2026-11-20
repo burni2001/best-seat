@@ -20,7 +20,7 @@
 | | |
 |---|---|
 | <img src="docs/screenshots/top-shelf.png" alt="Top shelf"> | **Top shelf.** Focus an app in the top row and the screen fills with its previews. You can jump straight into a show or film. |
-| <img src="docs/screenshots/control-center.png" alt="Control center"> | **Control center.** Double-press HOME to open it. It has profiles, picture and sound, inputs, Ambilight and Hue Sync, the screensaver and restart, all over a frosted-glass panel. |
+| <img src="docs/screenshots/control-center.png" alt="Control center"> | **Control center.** Double-press HOME to open it. It has profiles, picture and sound, inputs, Ambilight and Ambience (Hue Sync), the screensaver and restart, all over a frosted-glass panel. |
 | <img src="docs/screenshots/folders.png" alt="Folders"> | **Folders and dock.** Group apps into folders, pin favourites to the top row and hide what you never use. |
 | <img src="docs/screenshots/switcher.png" alt="App switcher"> | **App switcher.** Recent apps appear as a card stack. You can jump back or close an app. |
 | <img src="docs/screenshots/all-apps.png" alt="All apps"> | **All apps.** Every installed app in one list, including the ones hidden from the home screen. |
@@ -56,7 +56,7 @@ Best Seat was built for one TV, a **Philips OLED with Google TV (Android 14, 108
 
 Some control center tiles talk to small helper apps of mine. Without them the tiles simply do nothing or stay hidden:
 
-- **Ambilight and Hue Sync**: a helper app that switches Ambilight and Philips Hue Sync
+- **Ambilight and Ambience**: a helper app that switches Ambilight and Philips Hue Sync
 - **VPN**: a VPN status helper (Surfshark)
 - **Remote buttons**: a key-remapping app (for example tvQuickActions) to open the control center or screensaver with a button
 
