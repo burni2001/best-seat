@@ -11,3 +11,5 @@ build/
 .env*
 # macOS
 .DS_Store
+# Local package names of companion apps
+companions.properties

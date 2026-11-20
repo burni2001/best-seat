@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="tv.bernhard.launcher">
+    package="tv.bestseat.launcher">
 
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
-    <!-- App Switcher (aus tv.bernhard.appswitcher übernommen): zuletzt genutzte Apps. -->
+    <!-- App Switcher (aus der früheren App Switcher-App übernommen): zuletzt genutzte Apps. -->
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
     <!-- VPN-Anzeige in der Kopfzeile. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -50,12 +50,12 @@
             </intent-filter>
             <!-- Lädt Apps und Kachelbilder neu (tvQuickActions). -->
             <intent-filter>
-                <action android:name="tv.bernhard.launcher.REFRESH" />
+                <action android:name="tv.bestseat.launcher.REFRESH" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
             <!-- Größte Banner der Apps ohne Inhalte exportieren (adb, für eigenes Hochskalieren). -->
             <intent-filter>
-                <action android:name="tv.bernhard.launcher.EXPORT_BANNERS" />
+                <action android:name="tv.bestseat.launcher.EXPORT_BANNERS" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
@@ -72,13 +72,13 @@
             android:exported="false"
             android:theme="@style/PageTheme" />
         <!-- Bildschirmschoner: startet nach der Ruhezeit auf der Startseite oder per Intent
-             tv.bernhard.launcher.SCREENSAVER (z. B. tvQuickActions). Eigene Aufgabe, damit
+             tv.bestseat.launcher.SCREENSAVER (z. B. tvQuickActions). Eigene Aufgabe, damit
              nach dem Beenden wieder die vorherige App erscheint. -->
         <activity
             android:name=".ScreensaverActivity"
             android:label="Best Seat screensaver"
             android:exported="true"
-            android:taskAffinity="tv.bernhard.launcher.saver"
+            android:taskAffinity="tv.bestseat.launcher.saver"
             android:launchMode="singleTask"
             android:excludeFromRecents="true"
             android:noHistory="true"
@@ -86,25 +86,25 @@
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|smallestScreenSize|uiMode|density"
             android:theme="@style/PageTheme">
             <intent-filter>
-                <action android:name="tv.bernhard.launcher.SCREENSAVER" />
+                <action android:name="tv.bestseat.launcher.SCREENSAVER" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
 
-        <!-- Kontrollzentrum: über jeder App per Intent tv.bernhard.launcher.CONTROL_CENTER
+        <!-- Kontrollzentrum: über jeder App per Intent tv.bestseat.launcher.CONTROL_CENTER
              (tvQuickActions), auf der Startseite per Menü-Taste. -->
         <activity
             android:name=".ControlCenterActivity"
             android:label="Control Center"
             android:exported="true"
-            android:taskAffinity="tv.bernhard.launcher.control"
+            android:taskAffinity="tv.bestseat.launcher.control"
             android:launchMode="singleTask"
             android:excludeFromRecents="true"
             android:noHistory="true"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|smallestScreenSize|uiMode|density"
             android:theme="@style/OverlayTheme">
             <intent-filter>
-                <action android:name="tv.bernhard.launcher.CONTROL_CENTER" />
+                <action android:name="tv.bestseat.launcher.CONTROL_CENTER" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
@@ -127,7 +127,7 @@
             android:taskAffinity=""
             android:theme="@style/AllAppsTheme">
             <intent-filter>
-                <action android:name="tv.bernhard.launcher.ALL_APPS" />
+                <action android:name="tv.bestseat.launcher.ALL_APPS" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
@@ -141,7 +141,7 @@
             android:taskAffinity=""
             android:theme="@android:style/Theme.Translucent.NoTitleBar">
             <intent-filter>
-                <action android:name="tv.bernhard.launcher.SWITCHER" />
+                <action android:name="tv.bestseat.launcher.SWITCHER" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
@@ -156,7 +156,7 @@
             android:taskAffinity=""
             android:theme="@android:style/Theme.NoDisplay">
             <intent-filter>
-                <action android:name="tv.bernhard.launcher.LAST_APP" />
+                <action android:name="tv.bestseat.launcher.LAST_APP" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
@@ -170,7 +170,7 @@
             android:taskAffinity=""
             android:theme="@android:style/Theme.NoDisplay">
             <intent-filter>
-                <action android:name="tv.bernhard.launcher.PICTURE" />
+                <action android:name="tv.bestseat.launcher.PICTURE" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>

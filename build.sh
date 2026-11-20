@@ -1,5 +1,5 @@
 #!/bin/bash
-# Baut Best Seat (eigener Launcher, Paket tv.bernhard.launcher) ohne Gradle direkt mit den Android Build-Tools.
+# Baut Best Seat (eigener Launcher, Paket tv.bestseat.launcher) ohne Gradle direkt mit den Android Build-Tools.
 # Ergebnis: build/launcher.apk
 set -euo pipefail
 
@@ -28,10 +28,27 @@ fi
 
 "$BT/aapt2" link --manifest "$DIR/AndroidManifest.xml" -I "$ANDROID_JAR" "$OUT/res.zip" \
   --min-sdk-version 26 --target-sdk-version 34 \
-  --version-code 105 --version-name 0.18.13 \
+  --version-code 106 --version-name 0.19.0 \
   -o "$OUT/unsigned.apk"
 
-find "$DIR/src" -name '*.java' -exec \
+# Paketnamen der eigenen Begleit-Apps (Hue Sync, Helper, VPN-Status ...) stehen nur lokal in
+# companions.properties (nicht im Repository). Fehlt die Datei, gelten die Platzhalter aus
+# companions.example.properties: die zugehörigen Kacheln tun dann nichts.
+COMP="$DIR/companions.properties"
+[ -f "$COMP" ] || COMP="$DIR/companions.example.properties"
+mkdir -p "$OUT/gen/tv/bestseat/launcher"
+{
+  echo "package tv.bestseat.launcher;"
+  echo "/** Erzeugt von build.sh aus $(basename "$COMP"). */"
+  echo "public final class Companions {"
+  echo "    private Companions() {}"
+  grep -E '^[A-Z_]+=[a-zA-Z0-9_.]+$' "$COMP" | while IFS='=' read -r k v; do
+    echo "    public static final String $k = \"$v\";"
+  done
+  echo "}"
+} > "$OUT/gen/tv/bestseat/launcher/Companions.java"
+
+find "$DIR/src" "$OUT/gen" -name '*.java' -exec \
   javac -source 8 -target 8 -bootclasspath "$ANDROID_JAR:$BT/core-lambda-stubs.jar" -Xlint:-options \
   -d "$OUT/classes" {} +
 
