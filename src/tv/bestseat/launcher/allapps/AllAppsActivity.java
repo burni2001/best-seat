@@ -242,7 +242,7 @@ public class AllAppsActivity extends Activity {
                         Math.round(dpf(ROW_PITCH_DP))));
             }
             AppList.Entry app = apps.get(i);
-            View tile = buildTile(app, i % COLUMNS == 0);
+            View tile = buildTile(app, i % COLUMNS == COLUMNS - 1 || i == apps.size() - 1);
             LinearLayout.LayoutParams tileParams = new LinearLayout.LayoutParams(
                     Math.round(dpf(TILE_WIDTH_DP)), ViewGroup.LayoutParams.MATCH_PARENT);
             if (i % COLUMNS != 0) {
@@ -265,7 +265,7 @@ public class AllAppsActivity extends Activity {
         }
     }
 
-    private View buildTile(AppList.Entry app, boolean firstColumn) {
+    private View buildTile(AppList.Entry app, boolean lastInRow) {
         // Wie bei AT4K: kein Fokus-Hintergrund, die Kachel wird größer, bekommt
         // einen Schatten, und nur dann erscheint der Name darunter.
         FrameLayout tile = new FrameLayout(this);
@@ -335,10 +335,10 @@ public class AllAppsActivity extends Activity {
             showAppActions(app);
             return true;
         });
-        if (firstColumn) {
-            // Pfeil links am linken Rand öffnet das Menü.
+        if (lastInRow) {
+            // Pfeil rechts am Ende der Reihe öffnet das Menü (es liegt rechts).
             tile.setOnKeyListener((v, keyCode, event) -> {
-                if (keyCode != KeyEvent.KEYCODE_DPAD_LEFT) {
+                if (keyCode != KeyEvent.KEYCODE_DPAD_RIGHT) {
                     return false;
                 }
                 if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
