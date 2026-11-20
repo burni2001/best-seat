@@ -1875,14 +1875,7 @@ public final class HomeActivity extends Activity
             buildGrid();
         });
         if (tile.kind == Tile.APP && tile.pkg != null && tile.available) {
-            Dialogs.actionRow(this, p, "App Info", () -> {
-                try {
-                    startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                            Uri.fromParts("package", tile.pkg, null)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-                } catch (RuntimeException e) {
-                    Toast.makeText(this, "App info not available", Toast.LENGTH_SHORT).show();
-                }
-            });
+            Dialogs.actionRow(this, p, "App Info", () -> openAppInfo(tile.pkg));
         }
         if (!tile.available) {
             Dialogs.actionRow(this, p, "Remove Tile", "\u2296", true, () -> {
@@ -1892,6 +1885,15 @@ public final class HomeActivity extends Activity
         }
         show(p);
         first.requestFocus();
+    }
+
+    private void openAppInfo(String pkg) {
+        try {
+            startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    Uri.fromParts("package", pkg, null)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        } catch (RuntimeException e) {
+            Toast.makeText(this, "App info not available", Toast.LENGTH_SHORT).show();
+        }
     }
 
     // ---------------------------------------------------------------- Ordner
@@ -2019,6 +2021,16 @@ public final class HomeActivity extends Activity
             folderPanel.dialog.dismiss();
             chooseFolder(tile);
         });
+        Dialogs.actionRow(this, p, "Hide from Home Screen", () -> {
+            String folder = store.folderOf(tile.key);
+            folderPanel.dialog.dismiss();
+            store.setHidden(tile.key, true);
+            focusedKey = folder;
+            buildGrid();
+        });
+        if (tile.kind == Tile.APP && tile.pkg != null && tile.available) {
+            Dialogs.actionRow(this, p, "App Info", () -> openAppInfo(tile.pkg));
+        }
         p.dialog.show();
         first.requestFocus();
     }
