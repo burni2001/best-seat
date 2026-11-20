@@ -63,9 +63,19 @@ public class SwitcherActivity extends Activity {
     private boolean runningKnown;
 
 
+    /** Schrift beim Aufbau. Die Seite bleibt als eigene Aufgabe liegen; nach einem Wechsel neu aufbauen. */
+    private int builtFont;
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (Fonts.current(this) != builtFont) recreate();
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        builtFont = Fonts.current(this);
 
         // Globaler Schalter in den Einstellungen: aus heißt, die Taste tut nichts.
         if (!SwitcherPrefs.isEnabled(this)) {

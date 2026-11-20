@@ -89,9 +89,19 @@ public class AllAppsActivity extends Activity {
     private FrameLayout root;
     private boolean revealed;
 
+    /** Schrift beim Aufbau. Die Seite bleibt als eigene Aufgabe liegen; nach einem Wechsel neu aufbauen. */
+    private int builtFont;
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (Fonts.current(this) != builtFont) recreate();
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        builtFont = Fonts.current(this);
         String background = AllAppsPrefs.background(this);
         boolean blurred = AllAppsPrefs.BG_BLURRED.equals(background);
         if (!blurred) {

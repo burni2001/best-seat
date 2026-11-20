@@ -29,6 +29,11 @@ public final class Fonts {
     private Fonts() {
     }
 
+    /** Gewählte Schrift (Index in NAMES); Seiten merken sie sich beim Aufbau und bauen bei Änderung neu auf. */
+    public static int current(Context context) {
+        return Prefs.font(context);
+    }
+
     /** Schrift in der gewählten Familie und Stärke (100 bis 900). */
     public static Typeface get(Context context, int weight) {
         return get(context, Prefs.font(context), weight);
