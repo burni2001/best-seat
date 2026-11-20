@@ -63,8 +63,6 @@ public class AllAppsActivity extends Activity {
     private static final float ROW_PITCH_DP = 120f;
     /** Vergrößerung der Kachel mit Fokus (AT4K: 289×163 statt 247×140 px). */
     private static final float FOCUS_SCALE = 1.165f;
-    /** Abstand des Namens unter der unvergrößerten Kachel. */
-    private static final float LABEL_TOP_DP = 80f;
     private static final int MENU_WIDTH_DP = 300;
 
     private static final int BACKGROUND = Color.rgb(10, 10, 12);
@@ -294,23 +292,27 @@ public class AllAppsActivity extends Activity {
         tile.addView(image, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, Math.round(dpf(TILE_HEIGHT_DP)), Gravity.TOP));
 
+        // Name wie auf der Startseite (W118): gleiche Größe, Stärke, Schatten und Abstand zur
+        // vergrößerten Kachel; zu lange Namen laufen bei Fokus durch.
         TextView text = new TextView(this);
         text.setText(app.label);
         text.setTextColor(Color.WHITE);
-        text.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
-        // Schrift wie bei AT4K: Roboto fett mit etwas Laufweite.
-        text.setTypeface(Fonts.get(text.getContext(), Fonts.BOLD));
-        text.setLetterSpacing(0.02f);
+        text.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14.5f);
+        text.setTypeface(Fonts.get(text.getContext(), Fonts.MEDIUM));
+        text.setShadowLayer(dp(8), 0, dp(1), Color.argb(150, 0, 0, 0));
         text.setGravity(Gravity.CENTER_HORIZONTAL);
-        text.setMaxLines(1);
-        text.setEllipsize(TextUtils.TruncateAt.END);
-        text.setIncludeFontPadding(false);
-        text.setVisibility(View.INVISIBLE);
+        text.setSingleLine(true);
+        text.setEllipsize(TextUtils.TruncateAt.MARQUEE);
+        text.setMarqueeRepeatLimit(-1);
+        text.setHorizontalFadingEdgeEnabled(true);
+        text.setAlpha(0f);
         // Breiter als die Kachel (bis in die Abstände), mittig darunter.
         int labelWidth = Math.round(dpf(TILE_WIDTH_DP + GAP_DP));
         FrameLayout.LayoutParams textParams = new FrameLayout.LayoutParams(
                 labelWidth, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.CENTER_HORIZONTAL);
-        textParams.topMargin = Math.round(dpf(LABEL_TOP_DP));
+        // Wie HomeActivity: Unterkante der vergrößerten Kachel plus 3 dp, dazu 1 dp nach unten verschoben.
+        textParams.topMargin = Math.round(dpf(TILE_HEIGHT_DP) * (1f + (FOCUS_SCALE - 1f) / 2f)) + dp(3);
+        text.setTranslationY(dp(1));
         int overhang = (labelWidth - Math.round(dpf(TILE_WIDTH_DP))) / 2;
         textParams.leftMargin = -overhang;
         textParams.rightMargin = -overhang;
@@ -320,7 +322,8 @@ public class AllAppsActivity extends Activity {
             float scale = hasFocus ? FOCUS_SCALE : 1f;
             image.animate().scaleX(scale).scaleY(scale).translationZ(hasFocus ? dp(10) : 0)
                     .setDuration(195).start();
-            text.setVisibility(hasFocus ? View.VISIBLE : View.INVISIBLE);
+            text.animate().alpha(hasFocus ? 1f : 0f).setDuration(hasFocus ? 220 : 100).start();
+            text.setSelected(hasFocus);
             if (hasFocus) {
                 focusedPkg = app.pkg;
                 focusedTile = v;
