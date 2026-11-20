@@ -228,7 +228,10 @@ public final class ControlCenterActivity extends Activity {
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
-        if (intent.getBooleanExtra(EXTRA_CLOSE, false)) {
+        // Wechsel: Kommt der Intent erneut, während das CC offen ist (z. B. Doppel-HOME in tvQuickActions,
+        // das HOME selbst abfängt), schließt er es wie der zweite Doppelklick (W103).
+        if (intent.getBooleanExtra(EXTRA_CLOSE, false) || (ACTION.equals(intent.getAction()) && wasJustOpen())) {
+            // wasJustOpen statt resumedNow: Android pausiert die Aktivität vor onNewIntent.
             overridePendingTransition(0, 0);
             close();
         }
