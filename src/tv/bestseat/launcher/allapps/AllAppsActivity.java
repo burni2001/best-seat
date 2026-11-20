@@ -2,13 +2,11 @@ package tv.bestseat.launcher.allapps;
 
 import tv.bestseat.launcher.Fonts;
 import android.app.Activity;
-import android.app.Dialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.BitmapDrawable;
-import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
@@ -22,7 +20,6 @@ import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.Window;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -52,8 +49,6 @@ public class AllAppsActivity extends Activity {
     // Eckenradien wie im AT4K-Launcher (aus dem App Switcher übernommen).
     /** App-Banner, entspricht den Kacheln von AT4K. */
     private static final int BANNER_RADIUS_DP = 15;
-    /** Hintergrund der Menüzeile mit Fokus, entspricht der Fokus-Markierung von AT4K. */
-    private static final int FOCUS_RADIUS_DP = 18;
 
     // Raster wie die App-Liste von AT4K (am TV per Screenshot gemessen, 1920×1080,
     // 2 px pro dp): Kachel 247×140 px, Abstand 44 px, Zeilenraster 240 px.
@@ -63,16 +58,17 @@ public class AllAppsActivity extends Activity {
     private static final float ROW_PITCH_DP = 120f;
     /** Vergrößerung der Kachel mit Fokus (AT4K: 289×163 statt 247×140 px). */
     private static final float FOCUS_SCALE = 1.165f;
-    private static final int MENU_WIDTH_DP = 300;
+    private static final int MENU_WIDTH_DP = 400;
+    private static final int MENU_MARGIN_DP = 24;
 
     private static final int BACKGROUND = Color.rgb(10, 10, 12);
-    private static final int PANEL = Color.rgb(30, 30, 34);
-    private static final int FOCUS = Color.rgb(70, 70, 80);
-    private static final int SECONDARY = Color.rgb(160, 160, 170);
 
     private ScrollView gridScroller;
     private LinearLayout grid;
     private LinearLayout menu;
+    private View menuPanel;
+    /** Hinweis zur Menüzeile mit Fokus, wie in den Einstellungen der Startseite. */
+    private TextView menuHint;
     private boolean menuOpen;
     /** Ob sich im Menü ein Filter geändert hat, dann wird beim Schließen neu geladen. */
     private boolean menuChanged;
@@ -100,6 +96,7 @@ public class AllAppsActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         builtFont = Fonts.current(this);
+        LauncherBridge.applyTheme(this);
         String background = AllAppsPrefs.background(this);
         boolean blurred = AllAppsPrefs.BG_BLURRED.equals(background);
         if (!blurred) {
@@ -220,8 +217,11 @@ public class AllAppsActivity extends Activity {
         gridScroller.addView(grid);
         root.addView(gridScroller);
 
-        root.addView(buildMenu(), new FrameLayout.LayoutParams(
-                dp(MENU_WIDTH_DP), ViewGroup.LayoutParams.MATCH_PARENT, Gravity.START));
+        menuPanel = buildMenu();
+        FrameLayout.LayoutParams mlp = new FrameLayout.LayoutParams(
+                dp(MENU_WIDTH_DP), ViewGroup.LayoutParams.MATCH_PARENT, Gravity.END);
+        mlp.setMargins(0, dp(MENU_MARGIN_DP), dp(MENU_MARGIN_DP), dp(MENU_MARGIN_DP));
+        root.addView(menuPanel, mlp);
         return root;
     }
 
@@ -353,46 +353,61 @@ public class AllAppsActivity extends Activity {
     // ------------------------------------------------------------------ Menü
 
     private View buildMenu() {
-        ScrollView scroller = new ScrollView(this);
-        scroller.setBackgroundColor(PANEL);
-        scroller.setVerticalScrollBarEnabled(false);
-        scroller.setVisibility(View.INVISIBLE);
-        scroller.setElevation(dp(8));
+        // Aufbau wie die Einstellungen der Startseite: Abschnittstitel, helle Zeilen mit Fokus,
+        // Hinweis zur Zeile mit Fokus unten. Material-Kasten am rechten Rand.
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setBackground(LauncherBridge.material(this, dp(15)));
+        panel.setElevation(dp(15));
+        panel.setPadding(dp(14), dp(22), dp(14), dp(18));
+        panel.setVisibility(View.INVISIBLE);
 
+        TextView title = LauncherBridge.text(this, "All Apps", 22, false, true);
+        title.setPadding(dp(14), 0, 0, dp(6));
+        panel.addView(title);
+
+        ScrollView scroller = new ScrollView(this);
+        scroller.setVerticalScrollBarEnabled(false);
+        scroller.setClipChildren(false);
+        scroller.setClipToPadding(false);
         menu = new LinearLayout(this);
         menu.setOrientation(LinearLayout.VERTICAL);
-        menu.setPadding(dp(16), dp(32), dp(16), dp(32));
+        menu.setClipChildren(false);
+        menu.setClipToPadding(false);
+        menu.setPadding(dp(8), dp(4), dp(8), dp(8));
         scroller.addView(menu);
+        panel.addView(scroller, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
 
-        TextView title = new TextView(this);
-        title.setText("All Apps");
-        title.setTextColor(Color.WHITE);
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
-        title.setTypeface(Fonts.get(title.getContext(), Fonts.BOLD));
-        title.setPadding(dp(16), 0, 0, dp(8));
-        menu.addView(title);
+        menuHint = LauncherBridge.text(this, "", 13, true, false);
+        menuHint.setMaxLines(3);
+        menuHint.setPadding(dp(14), dp(10), dp(14), 0);
+        panel.addView(menuHint);
 
         addSection("Filter");
-        addToggle("Show system apps", AllAppsPrefs.SHOW_SYSTEM, true);
-        addToggle("Show non-TV apps", AllAppsPrefs.SHOW_NON_TV, true);
+        addToggle("Show system apps", AllAppsPrefs.SHOW_SYSTEM, true,
+                "Include system apps in the list.");
+        addToggle("Show non-TV apps", AllAppsPrefs.SHOW_NON_TV, true,
+                "Include apps made for phones and tablets.");
 
         addSection("Settings");
         addRow("Sort by", () -> AllAppsPrefs.get(this, AllAppsPrefs.SORT_BY_INSTALL) ? "Newest" : "Name", v -> {
             AllAppsPrefs.toggle(this, AllAppsPrefs.SORT_BY_INSTALL);
             menuChanged = true;
-        });
-        addToggle("Close when leaving", AllAppsPrefs.CLOSE_WHEN_LEAVING, false);
+        }, "Choose how the apps are ordered.");
+        addToggle("Close when leaving", AllAppsPrefs.CLOSE_WHEN_LEAVING, false,
+                "Close All Apps when you open an app.");
         // „Blurred“ braucht den Bildschirm dahinter und wirkt erst beim nächsten Öffnen.
         addRow("Background", () -> backgroundLabel(AllAppsPrefs.background(this)), v -> {
             String next = AllAppsPrefs.nextBackground(this);
             if (!AllAppsPrefs.BG_BLURRED.equals(next)) {
                 applyBackground(next);
             }
-        });
+        }, "Choose what fills the background of All Apps.");
 
         addSection("");
-        addRow("About", null, v -> showAbout());
-        return scroller;
+        addRow("About", null, v -> showAbout(), "See the version and who made Best Seat.");
+        return panel;
     }
 
     private static String backgroundLabel(String background) {
@@ -406,23 +421,16 @@ public class AllAppsActivity extends Activity {
         }
     }
 
+    /** Abschnittstitel in Großbuchstaben wie in den Einstellungen der Startseite. */
     private void addSection(String name) {
-        TextView label = new TextView(this);
-        label.setText(name.toUpperCase());
-        label.setTextColor(SECONDARY);
-        label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-        label.setTypeface(Fonts.get(label.getContext(), Fonts.BOLD));
-        label.setLetterSpacing(0.08f);
-        label.setPadding(dp(16), dp(20), 0, dp(6));
+        TextView label = LauncherBridge.text(this, name.toUpperCase(), 13, true, true);
+        label.setPadding(dp(14), dp(menu.getChildCount() == 0 ? 0 : 12), 0, dp(6));
         menu.addView(label);
     }
 
-    /**
-     * Zeile mit Schalter (wie in den Einstellungen des App Switchers), OK schaltet um.
-     * reload: Raster beim Schließen neu laden.
-     */
-    private void addToggle(String name, String key, boolean reload) {
-        LinearLayout row = menuRow(name);
+    /** Zeile mit Schalter, OK schaltet um. reload: Raster beim Schließen neu laden. */
+    private void addToggle(String name, String key, boolean reload, String hint) {
+        LinearLayout row = menuRow(name, hint);
         Switch toggle = LauncherBridge.toggle(this);
         toggle.setChecked(AllAppsPrefs.get(this, key));
         row.addView(toggle);
@@ -436,12 +444,9 @@ public class AllAppsActivity extends Activity {
     }
 
     /** Zeile im Menü. value liefert den angezeigten Wert rechts, null für keinen. */
-    private void addRow(String name, Supplier<String> value, View.OnClickListener action) {
-        LinearLayout row = menuRow(name);
-        TextView valueView = new TextView(this);
-        valueView.setTextColor(SECONDARY);
-        valueView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        valueView.setTypeface(Fonts.get(valueView.getContext(), Fonts.BOLD));
+    private void addRow(String name, Supplier<String> value, View.OnClickListener action, String hint) {
+        LinearLayout row = menuRow(name, hint);
+        TextView valueView = LauncherBridge.text(this, "", 16, true, false);
         if (value != null) {
             valueView.setText(value.get());
             row.addView(valueView);
@@ -454,32 +459,20 @@ public class AllAppsActivity extends Activity {
         });
     }
 
-    /** Leere Menüzeile mit Namen links, Fokus-Hintergrund und Pfeil rechts zum Schließen. */
-    private LinearLayout menuRow(String name) {
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(dp(16), 0, dp(16), 0);
-        // Gleich hoch, ob mit Schalter oder mit Text rechts.
-        row.setMinimumHeight(dp(50));
-        row.setFocusable(true);
-        row.setClickable(true);
-        GradientDrawable normal = rounded(Color.TRANSPARENT, FOCUS_RADIUS_DP);
-        GradientDrawable focused = rounded(FOCUS, FOCUS_RADIUS_DP);
-        row.setBackground(normal);
-        row.setOnFocusChangeListener((v, hasFocus) -> v.setBackground(hasFocus ? focused : normal));
-
-        TextView text = new TextView(this);
-        text.setText(name);
-        text.setTextColor(Color.WHITE);
-        text.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
-        text.setTypeface(Fonts.get(text.getContext(), Fonts.BOLD));
-        text.setLetterSpacing(0.02f);
+    /** Zeile wie in den Einstellungen der Startseite; Pfeil links schließt das Menü. */
+    private LinearLayout menuRow(String name, String hint) {
+        LinearLayout row = LauncherBridge.settingsRow(this);
+        row.setMinimumHeight(dp(33));
+        row.setPadding(dp(14), dp(4), dp(14), dp(4));
+        TextView text = LauncherBridge.text(this, name, 17, false, true);
         row.addView(text, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-
-        // Pfeil rechts schließt das Menü wieder.
+        View.OnFocusChangeListener base = row.getOnFocusChangeListener();
+        row.setOnFocusChangeListener((v, has) -> {
+            base.onFocusChange(v, has);
+            if (has) menuHint.setText(hint);
+        });
         row.setOnKeyListener((v, keyCode, event) -> {
-            if (keyCode != KeyEvent.KEYCODE_DPAD_RIGHT) {
+            if (keyCode != KeyEvent.KEYCODE_DPAD_LEFT) {
                 return false;
             }
             if (event.getAction() == KeyEvent.ACTION_DOWN) {
@@ -487,8 +480,10 @@ public class AllAppsActivity extends Activity {
             }
             return true;
         });
-        menu.addView(row, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.bottomMargin = dp(7);
+        menu.addView(row, lp);
         return row;
     }
 
@@ -498,16 +493,20 @@ public class AllAppsActivity extends Activity {
         }
         menuOpen = true;
         menuChanged = false;
-        View panel = (View) menu.getParent();
+        View panel = menuPanel;
         // Das Raster darf den Fokus nicht zurückholen, solange das Menü offen ist.
         gridScroller.setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
         gridScroller.animate().alpha(0.4f).setDuration(234).start();
-        panel.setTranslationX(-dp(MENU_WIDTH_DP));
+        panel.setTranslationX(dp(MENU_WIDTH_DP + MENU_MARGIN_DP));
         panel.setVisibility(View.VISIBLE);
         panel.animate().translationX(0).setDuration(234)
                 .setInterpolator(new DecelerateInterpolator()).start();
-        // Erste Zeile nach dem Titel und der Überschrift „Filter“.
-        menu.getChildAt(2).requestFocus();
+        for (int i = 0; i < menu.getChildCount(); i++) {
+            if (menu.getChildAt(i).isFocusable()) {
+                menu.getChildAt(i).requestFocus();
+                break;
+            }
+        }
     }
 
     private void closeMenu() {
@@ -515,8 +514,8 @@ public class AllAppsActivity extends Activity {
             return;
         }
         menuOpen = false;
-        View panel = (View) menu.getParent();
-        panel.animate().translationX(-dp(MENU_WIDTH_DP)).setDuration(208)
+        View panel = menuPanel;
+        panel.animate().translationX(dp(MENU_WIDTH_DP + MENU_MARGIN_DP)).setDuration(208)
                 .withEndAction(() -> panel.setVisibility(View.INVISIBLE)).start();
         gridScroller.animate().alpha(1f).setDuration(208).start();
         gridScroller.setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);
@@ -551,62 +550,19 @@ public class AllAppsActivity extends Activity {
 
     // ------------------------------------------------------ Langes OK: Aktionen
 
-    /** Kleines Overlay mit „Add to Home Screen“ (in AT4K wieder einblenden) und „App info“. */
+    /** Kontextmenü wie auf der Startseite: neben der Kachel, ohne Kopfzeile. */
     private void showAppActions(AppList.Entry app) {
-        Dialog dialog = new Dialog(this);
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(16), dp(20), dp(16), dp(16));
-        box.setBackground(rounded(PANEL, 24));
-
-        TextView title = new TextView(this);
-        title.setText(app.label);
-        title.setTextColor(Color.WHITE);
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
-        title.setTypeface(Fonts.get(title.getContext(), Fonts.BOLD));
-        title.setMaxLines(1);
-        title.setEllipsize(TextUtils.TruncateAt.END);
-        title.setPadding(dp(16), 0, dp(16), dp(10));
-        box.addView(title);
-
         boolean hidden = LauncherBridge.isHidden(this, app.pkg);
-        View add = actionRow(hidden ? "Show on Home Screen" : "Hide from Home Screen", () -> {
-            dialog.dismiss();
-            LauncherBridge.setHidden(this, app.pkg, !hidden);
-            Toast.makeText(this, hidden ? "Shown on the home screen" : "Hidden from the home screen",
-                    Toast.LENGTH_SHORT).show();
-        });
-        box.addView(add);
-        box.addView(actionRow("App info", () -> {
-            dialog.dismiss();
-            openAppInfo(app.pkg);
-        }));
-
-        dialog.setContentView(box);
-        dialog.show();
-        dialog.getWindow().setLayout(dp(380), ViewGroup.LayoutParams.WRAP_CONTENT);
-        add.requestFocus();
-    }
-
-    private View actionRow(String name, Runnable action) {
-        TextView row = new TextView(this);
-        row.setText(name);
-        row.setTextColor(Color.WHITE);
-        row.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
-        row.setTypeface(Fonts.get(row.getContext(), Fonts.BOLD));
-        row.setLetterSpacing(0.02f);
-        row.setPadding(dp(16), dp(12), dp(16), dp(12));
-        row.setFocusable(true);
-        row.setClickable(true);
-        GradientDrawable normal = rounded(Color.TRANSPARENT, FOCUS_RADIUS_DP);
-        GradientDrawable focused = rounded(FOCUS, FOCUS_RADIUS_DP);
-        row.setBackground(normal);
-        row.setOnFocusChangeListener((v, hasFocus) -> v.setBackground(hasFocus ? focused : normal));
-        row.setOnClickListener(v -> action.run());
-        return row;
+        LauncherBridge.contextMenu(this, focusedTile,
+                new String[] {hidden ? "Show on Home Screen" : "Hide from Home Screen", "App Info"},
+                new Runnable[] {
+                    () -> {
+                        LauncherBridge.setHidden(this, app.pkg, !hidden);
+                        Toast.makeText(this, hidden ? "Shown on the home screen" : "Hidden from the home screen",
+                                Toast.LENGTH_SHORT).show();
+                    },
+                    () -> openAppInfo(app.pkg)
+                });
     }
 
     // ----------------------------------------------------------------- About
@@ -643,13 +599,6 @@ public class AllAppsActivity extends Activity {
     }
 
     // ------------------------------------------------------------------ Hilfen
-
-    private GradientDrawable rounded(int color, int radiusDp) {
-        GradientDrawable shape = new GradientDrawable();
-        shape.setColor(color);
-        shape.setCornerRadius(dp(radiusDp));
-        return shape;
-    }
 
     private float dpf(float value) {
         return TypedValue.applyDimension(
