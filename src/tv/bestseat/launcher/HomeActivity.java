@@ -258,8 +258,12 @@ public final class HomeActivity extends Activity
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         if (ACTION_REFRESH.equals(intent.getAction())) {
+            // Von Hand angestoßen (Fernbedienung über den Google TV Helper): immer neu aufbauen, auch wenn
+            // sich an den Apps nichts geändert hat, und kurz Bescheid geben (W119).
             ShelfContent.invalidate();
             heroBanners.clear();
+            tilesSignature = "";
+            android.widget.Toast.makeText(this, "Refreshing home screen…", android.widget.Toast.LENGTH_SHORT).show();
             reload();
             return;
         }
