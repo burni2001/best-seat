@@ -1,5 +1,6 @@
 package tv.bestseat.launcher.switcher;
 
+import tv.bestseat.launcher.Fonts;
 import android.animation.LayoutTransition;
 import android.app.Activity;
 import android.content.Intent;
@@ -357,7 +358,7 @@ public class SwitcherActivity extends Activity {
             t.setText(c.label);
             t.setTextColor(Color.WHITE);
             t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 34);
-            t.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+            t.setTypeface(Fonts.get(t.getContext(), Fonts.MEDIUM));
             t.setGravity(Gravity.CENTER);
             card.addView(t, matchParent());
         }
@@ -399,7 +400,7 @@ public class SwitcherActivity extends Activity {
         name.setText(c.label);
         name.setTextColor(Color.WHITE);
         name.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
-        name.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        name.setTypeface(Fonts.get(name.getContext(), Fonts.MEDIUM));
         name.setMaxLines(1);
         name.setEllipsize(TextUtils.TruncateAt.END);
         caption.addView(name);

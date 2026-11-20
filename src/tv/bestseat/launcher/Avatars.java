@@ -61,11 +61,11 @@ final class Avatars {
             String n = name == null || name.isEmpty() ? "?" : name;
             v.setText(n.substring(0, n.offsetByCodePoints(0, 1)).toUpperCase());
             v.setTextColor(Color.WHITE);
-            v.setTypeface(Typeface.DEFAULT_BOLD);
+            v.setTypeface(Fonts.get(v.getContext(), Fonts.BOLD));
             v.setTextSize(TypedValue.COMPLEX_UNIT_SP, size * 0.42f);
         } else {
             v.setText(emoji);
-            v.setTypeface(Typeface.DEFAULT);
+            v.setTypeface(Fonts.get(v.getContext(), Fonts.REGULAR));
             v.setTextSize(TypedValue.COMPLEX_UNIT_SP, size * 0.48f);
         }
     }

@@ -110,6 +110,7 @@ public final class HomeActivity extends Activity
     private boolean pendingHidden;
     private int builtStoreVersion;
     private boolean builtLight;
+    private int builtFont;
     /** Fokus unter der Favoriten-Reihe: Top Shelf eingefroren, Hintergrund unscharf oder schlicht (W17). */
     private boolean frozen;
     private float backdropBlur = BACKDROP_BLUR;
@@ -139,6 +140,7 @@ public final class HomeActivity extends Activity
         super.onCreate(savedInstanceState);
         UsbNotice.install(this);
         builtLight = Ui.apply(this);
+        builtFont = Prefs.font(this);
         pendingHidden = ACTION_HIDDEN.equals(getIntent().getAction());
         store = LayoutStore.get(this);
         buildUi();
@@ -194,7 +196,7 @@ public final class HomeActivity extends Activity
             statusPill.setVisibility(ControlCenterActivity.hidesHomePill() ? View.INVISIBLE : View.VISIBLE);
         }
         // Erscheinungsbild geändert (Einstellung oder Automatik zur vollen Stunde): Seite neu aufbauen.
-        if (Prefs.isLight(this) != builtLight) {
+        if (Prefs.isLight(this) != builtLight || Prefs.font(this) != builtFont) {
             recreate();
             return;
         }
@@ -478,7 +480,7 @@ public final class HomeActivity extends Activity
         shelfApp.setPadding(sh, sh, 0, sh);
         shelfSection = Ui.text(this, "", 18, Color.argb(220, 255, 255, 255), false);
         shelfSection.setShadowLayer(Ui.dp(this, 8), 0, Ui.dp(this, 1), capShadow);
-        shelfSection.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
+        shelfSection.setTypeface(Fonts.get(shelfSection.getContext(), Fonts.MEDIUM));
         shelfSection.setPadding(Ui.dp(this, 14), sh, sh, sh + Ui.dp(this, 3));
         captionLine.addView(shelfApp);
         captionLine.addView(shelfSection);
@@ -754,7 +756,7 @@ public final class HomeActivity extends Activity
             // Abstand wie im tvOS-Screenshot des Nutzers: 23 px von der vergrößerten Kachel bis zur
             // Oberkante der Schrift (nur gezeichnet, Reihenabstand bleibt). Schrift Medium statt Bold.
             label.setTranslationY(Ui.dp(this, 1));
-            label.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
+            label.setTypeface(Fonts.get(label.getContext(), Fonts.MEDIUM));
             if (!(favorites && rowIndex == 0)) cell.addView(label, lp);
             LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(w, ViewGroup.LayoutParams.WRAP_CONTENT);
             if (i % columns != 0) cp.leftMargin = gap;
@@ -1952,7 +1954,7 @@ public final class HomeActivity extends Activity
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(w, ViewGroup.LayoutParams.WRAP_CONTENT);
             lp.topMargin = Math.round(h * (TileView.FOCUS_SCALE - 1f) / 2f) + Ui.dp(this, 4);
             label.setTranslationY(Ui.dp(this, 2));
-            label.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
+            label.setTypeface(Fonts.get(label.getContext(), Fonts.MEDIUM));
             cell.addView(label, lp);
             tv.setOnFocusChangeListener((v, has) -> {
                 tv.focus(has, 0, 0);

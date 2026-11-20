@@ -125,9 +125,9 @@ final class Ui {
         view.setTextColor(color);
         // Wie tvOS: Medium für Beschriftungen, Bold nur für große Titel.
         if (bold && sp < 22) {
-            view.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+            view.setTypeface(Fonts.get(view.getContext(), Fonts.MEDIUM));
         } else {
-            view.setTypeface(Typeface.create("sans-serif", bold ? Typeface.BOLD : Typeface.NORMAL));
+            view.setTypeface(Fonts.get(view.getContext(), bold ? Fonts.BOLD : Fonts.REGULAR));
         }
         view.setMaxLines(1);
         view.setEllipsize(TextUtils.TruncateAt.END);

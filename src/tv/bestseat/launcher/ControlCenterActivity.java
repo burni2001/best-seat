@@ -856,7 +856,7 @@ public final class ControlCenterActivity extends Activity {
             badge.setGravity(Gravity.CENTER);
             badge.setIncludeFontPadding(false);
             badge.setTextColor(Color.WHITE);
-            badge.setTypeface(Typeface.DEFAULT_BOLD);
+            badge.setTypeface(Fonts.get(badge.getContext(), Fonts.BOLD));
             badge.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
             GradientDrawable g = new GradientDrawable();
             g.setShape(GradientDrawable.OVAL);
@@ -884,7 +884,7 @@ public final class ControlCenterActivity extends Activity {
                 if (has) bg.setStroke(Ui.dp(this, 2), Ui.light ? Color.rgb(22, 24, 28) : Color.WHITE);
                 circle.setBackground(bg);
                 circle.setText("+");
-                circle.setTypeface(Typeface.DEFAULT);
+                circle.setTypeface(Fonts.get(circle.getContext(), Fonts.REGULAR));
                 circle.setTextColor(Ui.TEXT);
                 circle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 34);
             } else {

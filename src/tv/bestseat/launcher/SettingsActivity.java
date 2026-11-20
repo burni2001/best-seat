@@ -14,6 +14,9 @@ import android.widget.Toast;
 
 /** Einstellungen der Startseite. Hinweiszeile unten zur Zeile mit Fokus. */
 public final class SettingsActivity extends Activity {
+    /** Schrift beim Aufbau; ändert sie sich, wird die Seite neu erstellt. */
+    private int builtFont;
+
 
     private LinearLayout list;
     private TextView hint;
@@ -26,6 +29,7 @@ public final class SettingsActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Ui.apply(this);
+        builtFont = Prefs.font(this);
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(Ui.BACKGROUND);
         // Aufbau wie die tvOS-Einstellungen (Screenshots des Nutzers): Titel mittig oben, links großes
@@ -193,10 +197,15 @@ public final class SettingsActivity extends Activity {
         for (int i = 0; i < choiceNames.length; i++) {
             final int index = i;
             TextView check = Ui.dimText(this, i == cur ? "\u2713" : "");
-            row(choiceNames[i], check, choiceHint).setOnClickListener(v -> {
+            LinearLayout r = row(choiceNames[i], check, choiceHint);
+            r.setOnClickListener(v -> {
                 choiceSet.accept(index);
                 closeChoice();
             });
+            // Schriftauswahl: jeden Namen in seiner eigenen Schrift zeigen.
+            if ("font".equals(choiceTag) && r.getChildAt(0) instanceof TextView) {
+                ((TextView) r.getChildAt(0)).setTypeface(Fonts.get(this, i, Fonts.MEDIUM));
+            }
         }
     }
 
@@ -204,8 +213,8 @@ public final class SettingsActivity extends Activity {
     private void closeChoice() {
         if (!PAGE_CHOICE.equals(page)) return;
         page = choiceParent;
-        if (Prefs.isLight(this) != Ui.light) {
-            // Design gewechselt: Seite neu erstellen, Fokus wieder auf die Zeile.
+        if (Prefs.isLight(this) != Ui.light || Prefs.font(this) != builtFont) {
+            // Design oder Schrift gewechselt: Seite neu erstellen, Fokus wieder auf die Zeile.
             focusAfterRecreate = choiceTag;
             recreate();
             return;
@@ -223,6 +232,8 @@ public final class SettingsActivity extends Activity {
         section("Look");
         choiceRow("Appearance", Prefs.APPEARANCE_NAMES, () -> Prefs.appearance(this),
                 i -> Prefs.setAppearance(this, i), "Choose a dark or light look, or light only during the day.", "appearance");
+        choiceRow("Font", Fonts.NAMES, () -> Prefs.font(this),
+                i -> Prefs.setFont(this, i), "Choose the font for all launcher text.", "font");
         choiceRow("Clock time zone", Prefs.ZONE_NAMES, () -> Prefs.clockZone(this),
                 i -> Prefs.setClockZone(this, i), "Choose which time the clocks show.", "zone");
         Switch reduce = Ui.toggle(this);

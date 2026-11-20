@@ -573,7 +573,7 @@ public final class ScreensaverActivity extends Activity implements SurfaceHolder
         Prefs.applyZone(this, overlayClock);
         // Größer und fett (Wunsch des Nutzers).
         overlayClock.setTextSize(TypedValue.COMPLEX_UNIT_SP, 44);
-        overlayClock.setTypeface(Typeface.DEFAULT_BOLD);
+        overlayClock.setTypeface(Fonts.get(overlayClock.getContext(), Fonts.BOLD));
         // Off-white und ohne Schatten (Wunsch des Nutzers, W77).
         overlayClock.setTextColor(Color.rgb(242, 241, 236));
         overlayClock.setAlpha(0f);
@@ -622,7 +622,7 @@ public final class ScreensaverActivity extends Activity implements SurfaceHolder
         time.setFormat12Hour("h:mm");
         time.setTextSize(TypedValue.COMPLEX_UNIT_SP, 96);
         Prefs.applyZone(this, time);
-        time.setTypeface(Typeface.create("sans-serif-thin", Typeface.NORMAL));
+        time.setTypeface(Fonts.get(time.getContext(), Fonts.THIN));
         time.setTextColor(Color.rgb(200, 200, 204));
         clockBox.addView(time);
         TextClock date = new TextClock(this);
@@ -630,7 +630,7 @@ public final class ScreensaverActivity extends Activity implements SurfaceHolder
         date.setFormat12Hour("EEEE, MMMM d");
         date.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22);
         Prefs.applyZone(this, date);
-        date.setTypeface(Typeface.create("sans-serif-light", Typeface.NORMAL));
+        date.setTypeface(Fonts.get(date.getContext(), Fonts.LIGHT));
         date.setTextColor(Color.rgb(130, 132, 138));
         clockBox.addView(date);
         clockBox.setAlpha(0f);

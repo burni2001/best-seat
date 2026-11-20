@@ -285,7 +285,7 @@ final class Dialogs {
         box.setOutlineProvider(new RoundedOutline(Ui.dp(activity, 24)));
         box.setPadding(Ui.dp(activity, 16), Ui.dp(activity, 24), Ui.dp(activity, 16), Ui.dp(activity, 16));
         TextView t = Ui.text(activity, title, 16, Ui.TEXT, false);
-        t.setTypeface(android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD));
+        t.setTypeface(Fonts.get(t.getContext(), Fonts.BOLD));
         t.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 15.5f);
         t.setGravity(Gravity.CENTER);
         t.setMaxLines(2);
@@ -294,7 +294,7 @@ final class Dialogs {
                 ViewGroup.LayoutParams.WRAP_CONTENT));
         if (message != null) {
             TextView m = Ui.text(activity, message, 13, Ui.TEXT, false);
-            m.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
+            m.setTypeface(Fonts.get(m.getContext(), Fonts.MEDIUM));
             m.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 12.5f);
             m.setAlpha(Ui.light ? 0.6f : 0.5f);
             m.setGravity(Gravity.CENTER);
@@ -444,7 +444,7 @@ final class Dialogs {
      */
     static View button(Activity activity, Panel panel, String label, Runnable action) {
         TextView b = Ui.text(activity, label, 15, Ui.TEXT, true);
-        b.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
+        b.setTypeface(Fonts.get(b.getContext(), Fonts.MEDIUM));
         b.setGravity(Gravity.CENTER);
         b.setFocusable(true);
         b.setClickable(true);

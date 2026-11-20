@@ -25,7 +25,7 @@
 | <img src="docs/screenshots/switcher.png" alt="App switcher"> | **App switcher.** Recent apps appear as a card stack. You can jump back or close an app. |
 | <img src="docs/screenshots/all-apps.png" alt="All apps"> | **All apps.** Every installed app in one list, including the ones hidden from the home screen. |
 | <img src="docs/screenshots/screensaver.png" alt="Screensaver"> | **Screensaver.** It shows aerial videos or online photos. The clock hops around the screen, so nothing stays static on an OLED. |
-| <img src="docs/screenshots/settings.png" alt="Settings"> | **Settings.** Light and dark mode, clock and time zone, profiles, layout backup and restore. |
+| <img src="docs/screenshots/settings.png" alt="Settings"> | **Settings.** Light and dark mode, six fonts, clock and time zone, profiles, layout backup and restore. |
 
 ## Requirements
 
@@ -75,3 +75,4 @@ adb install -r --user 0 build/launcher.apk
 
 Created by Börni (burni2001). Built with [Claude Code](https://claude.com/claude-code).
 Features modelled on AT4K Launcher, design inspired by tvOS.
+Bundled fonts Inter, Manrope, Plus Jakarta Sans, Outfit and Urbanist are licensed under the SIL Open Font License 1.1 (see `docs/fonts`).

@@ -1,5 +1,6 @@
 package tv.bestseat.launcher.allapps;
 
+import tv.bestseat.launcher.Fonts;
 import android.app.Activity;
 import android.app.Dialog;
 import android.content.Intent;
@@ -288,7 +289,7 @@ public class AllAppsActivity extends Activity {
         text.setTextColor(Color.WHITE);
         text.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
         // Schrift wie bei AT4K: Roboto fett mit etwas Laufweite.
-        text.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
+        text.setTypeface(Fonts.get(text.getContext(), Fonts.BOLD));
         text.setLetterSpacing(0.02f);
         text.setGravity(Gravity.CENTER_HORIZONTAL);
         text.setMaxLines(1);
@@ -354,7 +355,7 @@ public class AllAppsActivity extends Activity {
         title.setText("All Apps");
         title.setTextColor(Color.WHITE);
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
-        title.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
+        title.setTypeface(Fonts.get(title.getContext(), Fonts.BOLD));
         title.setPadding(dp(16), 0, 0, dp(8));
         menu.addView(title);
 
@@ -397,7 +398,7 @@ public class AllAppsActivity extends Activity {
         label.setText(name.toUpperCase());
         label.setTextColor(SECONDARY);
         label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-        label.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
+        label.setTypeface(Fonts.get(label.getContext(), Fonts.BOLD));
         label.setLetterSpacing(0.08f);
         label.setPadding(dp(16), dp(20), 0, dp(6));
         menu.addView(label);
@@ -427,7 +428,7 @@ public class AllAppsActivity extends Activity {
         TextView valueView = new TextView(this);
         valueView.setTextColor(SECONDARY);
         valueView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        valueView.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
+        valueView.setTypeface(Fonts.get(valueView.getContext(), Fonts.BOLD));
         if (value != null) {
             valueView.setText(value.get());
             row.addView(valueView);
@@ -459,7 +460,7 @@ public class AllAppsActivity extends Activity {
         text.setText(name);
         text.setTextColor(Color.WHITE);
         text.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
-        text.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
+        text.setTypeface(Fonts.get(text.getContext(), Fonts.BOLD));
         text.setLetterSpacing(0.02f);
         row.addView(text, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
 
@@ -552,7 +553,7 @@ public class AllAppsActivity extends Activity {
         title.setText(app.label);
         title.setTextColor(Color.WHITE);
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
-        title.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
+        title.setTypeface(Fonts.get(title.getContext(), Fonts.BOLD));
         title.setMaxLines(1);
         title.setEllipsize(TextUtils.TruncateAt.END);
         title.setPadding(dp(16), 0, dp(16), dp(10));
@@ -582,7 +583,7 @@ public class AllAppsActivity extends Activity {
         row.setText(name);
         row.setTextColor(Color.WHITE);
         row.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
-        row.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
+        row.setTypeface(Fonts.get(row.getContext(), Fonts.BOLD));
         row.setLetterSpacing(0.02f);
         row.setPadding(dp(16), dp(12), dp(16), dp(12));
         row.setFocusable(true);

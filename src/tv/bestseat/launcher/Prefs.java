@@ -270,6 +270,17 @@ final class Prefs {
         return hour >= 7 && hour < 19;
     }
 
+    // ---- Schrift (W115): Roboto oder eine mitgelieferte freie Schrift (Fonts.NAMES)
+
+    static int font(Context c) {
+        int i = sp(c).getInt("font", 0);
+        return i >= 0 && i < Fonts.NAMES.length ? i : 0;
+    }
+
+    static void setFont(Context c, int index) {
+        sp(c).edit().putInt("font", index).apply();
+    }
+
     // ---- W21: Profil im Kontrollzentrum
 
     // Name und Bild gehören zum aktuellen Profil (W11).

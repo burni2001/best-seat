@@ -26,9 +26,9 @@ fi
 # Banner (TV-Kachel) und App-Symbol aus res/ übersetzen.
 "$BT/aapt2" compile --dir "$DIR/res" -o "$OUT/res.zip"
 
-"$BT/aapt2" link --manifest "$DIR/AndroidManifest.xml" -I "$ANDROID_JAR" "$OUT/res.zip" \
+"$BT/aapt2" link --manifest "$DIR/AndroidManifest.xml" -I "$ANDROID_JAR" "$OUT/res.zip" -A "$DIR/assets" \
   --min-sdk-version 26 --target-sdk-version 34 \
-  --version-code 110 --version-name 0.19.4 \
+  --version-code 113 --version-name 0.20.2 \
   -o "$OUT/unsigned.apk"
 
 # Paketnamen der eigenen Begleit-Apps (Hue Sync, Helper, VPN-Status ...) stehen nur lokal in

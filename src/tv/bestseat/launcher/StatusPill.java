@@ -81,7 +81,7 @@ final class StatusPill extends LinearLayout {
         time.setFormat12Hour("h:mm");
         Prefs.applyZone(activity, time);
         time.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        time.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        time.setTypeface(Fonts.get(time.getContext(), Fonts.MEDIUM));
         time.setTextColor(Ui.light ? Color.argb(200, 0, 0, 0) : Color.argb(210, 255, 255, 255));
         time.setIncludeFontPadding(false);
         LayoutParams tlp = new LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
