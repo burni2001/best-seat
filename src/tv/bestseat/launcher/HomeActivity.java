@@ -120,10 +120,6 @@ public final class HomeActivity extends Activity
     private boolean resumed;
     /** Sichtbar seit (uptime), 0 = gestoppt. Für „Home auf der Startseite“: Android pausiert vor onNewIntent. */
     private long visibleSince;
-    /** Zeitpunkt der letzten Home-Taste (uptime), für Doppel-Home → Kontrollzentrum. */
-    private long lastHomePress;
-    private long homePressWall;
-    private static final long DOUBLE_HOME_MS = 700;
     private Dialog openDialog;
 
     private String waitingPkg;
@@ -275,47 +271,18 @@ public final class HomeActivity extends Activity
         // „Schon vorne“ = seit über 0,5 s sichtbar. resumed taugt nicht: Android pausiert die Aktivität,
         // bevor es den neuen Intent zustellt. Aus einer App oder dem Schoner kommend war sie gestoppt.
         boolean onHome = visibleSince != 0 && android.os.SystemClock.uptimeMillis() - visibleSince > 500;
-        // Doppel-Home (auch aus einer App: die erste holt die Startseite, die zweite das Kontrollzentrum).
-        // tvQuickActions kann die Home-Taste nicht belegen, deshalb hier.
+        // Doppel-Home erkennt tvQuickActions selbst (schickt dann CONTROL_CENTER), hier kommt nur einfaches Home an.
         if (intent.hasCategory(Intent.CATEGORY_HOME)) {
-            long now = android.os.SystemClock.uptimeMillis();
-            if (now - lastHomePress < DOUBLE_HOME_MS) {
-                lastHomePress = 0;
-                // Doppel-Home: Fokus bleibt, wo er war (B47); den Sprung an den Anfang vom ersten Druck verwerfen.
-                handler.removeCallbacks(homeReset);
-                // War das CC beim ersten Druck offen, hat dieser es geschlossen; der zweite öffnet es
-                // nicht wieder. Doppel-Home öffnet und schließt also im Wechsel (W103).
-                if (ccOpenAtFirstPress) {
-                    ControlCenterActivity.closeAnimated(this);
-                    return;
-                }
-                // Ob eine App vorne war, sagt die Nutzungsstatistik (auch bei durchsichtigen Apps,
-                // unter denen die Startseite sichtbar bleibt); sonst wie bisher über der Startseite.
-                openControlCenterOverApp(homePressWall);
-                return;
-            }
-            lastHomePress = now;
-            ccOpenAtFirstPress = ControlCenterActivity.wasJustOpen();
-            if (ccOpenAtFirstPress) {
+            if (ControlCenterActivity.wasJustOpen()) {
                 // Home bei offenem CC: schließt es animiert, kein Sprung an den Anfang (W104).
-                handler.removeCallbacks(homeReset);
                 ControlCenterActivity.closeAnimated(this);
                 return;
             }
-            // Beim zweiten Druck die App zurückholen, die der erste verlassen hat, und das
-            // Kontrollzentrum über sie legen (W76).
-            homePressWall = System.currentTimeMillis();
-        }
-        if (onHome && intent.hasCategory(Intent.CATEGORY_HOME)) {
-            // Erst nach dem Doppel-Home-Fenster an den Anfang springen: Kommt ein zweiter Druck, öffnet nur
-            // das Kontrollzentrum und der Fokus bleibt stehen (B47).
-            handler.removeCallbacks(homeReset);
-            handler.postDelayed(homeReset, DOUBLE_HOME_MS);
+            // Home, während die Startseite schon vorne ist: sofort an den Anfang.
+            if (onHome) resetToStart();
         }
     }
 
-    private boolean ccOpenAtFirstPress;
-    private final Runnable homeReset = this::resetToStart;
 
     private void resetToStart() {
         if (isDestroyed()) return;
@@ -358,49 +325,6 @@ public final class HomeActivity extends Activity
         }
         startActivity(cc, android.app.ActivityOptions.makeCustomAnimation(this, 0, 0).toBundle());
         overridePendingTransition(0, 0);
-    }
-
-    /**
-     * Doppel-Home aus einer App: die App, die beim ersten Druck in den Hintergrund ging, wieder nach
-     * vorne holen und das Kontrollzentrum (eigene Aufgabe, durchsichtig) darüberlegen. Die App ermittelt
-     * die Nutzungsstatistik (Freigabe hat der Launcher für den App Switcher). Unklar: wie bisher über
-     * der Startseite.
-     */
-    private void openControlCenterOverApp(long pressWall) {
-        final Context app = getApplicationContext();
-        worker.execute(() -> {
-            String pkg = appLeftByHome(app, pressWall);
-            Intent launch = null;
-            if (pkg != null) {
-                PackageManager pm = app.getPackageManager();
-                launch = pm.getLeanbackLaunchIntentForPackage(pkg);
-                if (launch == null) launch = pm.getLaunchIntentForPackage(pkg);
-            }
-            final Intent back = launch;
-            final String backPkg = pkg;
-            handler.post(() -> {
-                if (back == null) {
-                    openControlCenter(null);
-                    return;
-                }
-                Log.i(TAG, "Double Home: Control Center over " + backPkg);
-                // Holt die laufende App mit ihrem Zustand zurück (keine neue Seite).
-                back.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
-                try {
-                    startActivity(back, android.app.ActivityOptions.makeCustomAnimation(this, 0, 0).toBundle());
-                } catch (RuntimeException e) {
-                    Log.w(TAG, "Double Home: app not started", e);
-                    openControlCenter(null);
-                    return;
-                }
-                openControlCenter(backPkg);
-            });
-        });
-    }
-
-    /** Fremde App, deren Seite beim ersten Home-Druck (±1,5 s) pausiert wurde, sonst null. */
-    private static String appLeftByHome(Context c, long pressWall) {
-        return appLeftByHome(c, pressWall, false);
     }
 
     /** stillResumed: auch eine App gelten lassen, deren Pause Android noch nicht eingetragen hat (onStart). */
