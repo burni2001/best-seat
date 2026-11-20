@@ -118,6 +118,14 @@ final class Ui {
                 context.getResources().getDisplayMetrics()));
     }
 
+    /** Zu langer Text läuft durch, solange die View ausgewählt ist (setSelected(true), z. B. bei Fokus). */
+    static void marquee(TextView v) {
+        v.setSingleLine(true);
+        v.setEllipsize(TextUtils.TruncateAt.MARQUEE);
+        v.setMarqueeRepeatLimit(-1);
+        v.setHorizontalFadingEdgeEnabled(true);
+    }
+
     static TextView text(Context context, CharSequence value, int sp, int color, boolean bold) {
         TextView view = new TextView(context);
         view.setText(value);

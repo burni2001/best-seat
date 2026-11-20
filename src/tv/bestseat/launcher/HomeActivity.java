@@ -757,6 +757,8 @@ public final class HomeActivity extends Activity
             // Oberkante der Schrift (nur gezeichnet, Reihenabstand bleibt). Schrift Medium statt Bold.
             label.setTranslationY(Ui.dp(this, 1));
             label.setTypeface(Fonts.get(label.getContext(), Fonts.MEDIUM));
+            // Zu lange Namen laufen bei Fokus durch, wie im Kontrollzentrum (W116).
+            Ui.marquee(label);
             if (!(favorites && rowIndex == 0)) cell.addView(label, lp);
             LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(w, ViewGroup.LayoutParams.WRAP_CONTENT);
             if (i % columns != 0) cp.leftMargin = gap;
@@ -771,6 +773,7 @@ public final class HomeActivity extends Activity
                     dock.setEdges(dockRow && firstInRow, dockRow && lastInRow);
                 }
                 label.animate().alpha(has ? 1f : 0f).setDuration(Ui.ms(has ? 220 : 100)).start();
+                label.setSelected(has);
                 if (has) {
                     focusedKey = tile.key;
                     currentTileView = tv;
@@ -1955,10 +1958,12 @@ public final class HomeActivity extends Activity
             lp.topMargin = Math.round(h * (TileView.FOCUS_SCALE - 1f) / 2f) + Ui.dp(this, 4);
             label.setTranslationY(Ui.dp(this, 2));
             label.setTypeface(Fonts.get(label.getContext(), Fonts.MEDIUM));
+            Ui.marquee(label);
             cell.addView(label, lp);
             tv.setOnFocusChangeListener((v, has) -> {
                 tv.focus(has, 0, 0);
                 label.animate().alpha(has ? 1f : 0f).setDuration(Ui.ms(has ? 220 : 100)).start();
+                label.setSelected(has);
             });
             tv.setOnClickListener(v -> {
                 captureZoom(tv);

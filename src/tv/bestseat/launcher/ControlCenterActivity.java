@@ -1285,7 +1285,7 @@ public final class ControlCenterActivity extends Activity {
         }
         b.addView(iv, ilp);
         TextView t = Ui.text(this, title, big ? 13 : 12, Ui.TEXT, true);
-        marquee(t);
+        Ui.marquee(t);
         if (big) t.setGravity(Gravity.CENTER_HORIZONTAL);
         b.addView(t, big ? new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT) : new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
@@ -1301,13 +1301,6 @@ public final class ControlCenterActivity extends Activity {
         });
         b.setOnClickListener(v -> action.run());
         return b;
-    }
-
-    private static void marquee(TextView v) {
-        v.setSingleLine(true);
-        v.setEllipsize(TextUtils.TruncateAt.MARQUEE);
-        v.setMarqueeRepeatLimit(-1);
-        v.setHorizontalFadingEdgeEnabled(true);
     }
 
     private View wideRow(String label, Runnable action) {
