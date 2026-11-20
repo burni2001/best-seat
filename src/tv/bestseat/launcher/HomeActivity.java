@@ -240,6 +240,7 @@ public final class HomeActivity extends Activity
     protected void onStart() {
         super.onStart();
         visibleSince = android.os.SystemClock.uptimeMillis();
+        visibleHome = new java.lang.ref.WeakReference<>(this);
         removeZoom(false);
         maybeZoomBack();
     }
@@ -248,6 +249,7 @@ public final class HomeActivity extends Activity
     protected void onStop() {
         super.onStop();
         visibleSince = 0;
+        if (visibleHome != null && visibleHome.get() == this) visibleHome = null;
     }
 
     @Override
@@ -294,6 +296,21 @@ public final class HomeActivity extends Activity
             tileViews.get(0).requestFocus();
         }
         scroll.animateTo(0);
+    }
+
+    /** Startseite, solange sie sichtbar ist (für das Kontrollzentrum per Intent). */
+    private static java.lang.ref.WeakReference<HomeActivity> visibleHome;
+
+    /**
+     * Kontrollzentrum per Intent (tvQuickActions, Doppel-HOME): Ist die Startseite sichtbar, öffnet sie es
+     * selbst, damit es wie über die Menü-Taste den weichgezeichneten Hintergrund bekommt. false: keine
+     * Startseite sichtbar (eine App ist vorne).
+     */
+    static boolean openControlCenterFromIntent() {
+        HomeActivity h = visibleHome != null ? visibleHome.get() : null;
+        if (h == null || h.visibleSince == 0 || h.isFinishing()) return false;
+        h.handler.post(() -> h.openControlCenter(null));
+        return true;
     }
 
     private void openControlCenter(String overPkg) {

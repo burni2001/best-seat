@@ -79,6 +79,12 @@ public final class ControlCenterActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // Per Intent auf der Startseite: die Startseite öffnet das CC neu, mit Milchglas-Hintergrund.
+        if (homeBlur == null && ACTION.equals(getIntent().getAction()) && HomeActivity.openControlCenterFromIntent()) {
+            finish();
+            overridePendingTransition(0, 0);
+            return;
+        }
         Ui.apply(this);
         root = new FrameLayout(this);
         // Abdunkeln von rechts nach links, die App links bleibt erkennbar. Eigene Ebene, damit nur sie
@@ -726,7 +732,9 @@ public final class ControlCenterActivity extends Activity {
     }
 
     private void showInputs() {
-        setPanelHeight(0);
+        // Inputs so groß wie die Kachelseite (wie Profil), nicht auf die Zeilen geschrumpft.
+        if (body.getTag() == null && panel.getHeight() > 0) mainPanelHeight = panel.getHeight();
+        setPanelHeight(mainPanelHeight);
         body.removeAllViews();
         body.setTag("inputs");
         body.addView(Ui.caption(this, "Inputs"), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -1311,6 +1319,9 @@ public final class ControlCenterActivity extends Activity {
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
         lp.topMargin = Ui.dp(this, GAP_DP);
+        // Platz an den Seiten, damit die vergrößerte Zeile mit Fokus samt Schatten nicht am Rand anstößt.
+        lp.leftMargin = Ui.dp(this, 8);
+        lp.rightMargin = Ui.dp(this, 8);
         body.addView(row, lp);
         return row;
     }
