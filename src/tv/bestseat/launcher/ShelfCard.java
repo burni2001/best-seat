@@ -18,6 +18,7 @@ final class ShelfCard extends FrameLayout {
 
     final ShelfContent.Item item;
     final ImageView image;
+    private final TextView fallback;
     private final View gloss;
 
     ShelfCard(Context context, ShelfContent.Item item, int width, int height) {
@@ -33,8 +34,10 @@ final class ShelfCard extends FrameLayout {
                 new int[] {Color.rgb(52, 56, 66), Color.rgb(30, 32, 38)}));
         setCameraDistance(9000 * getResources().getDisplayMetrics().density);
 
-        TextView fallback = Ui.text(context, item.title != null ? item.title : "", 15, Ui.TEXT, true);
+        fallback = Ui.text(context, item.title != null ? item.title : "", 15, Ui.TEXT, true);
         fallback.setMaxLines(3);
+        // Titel nur, wenn das Bild fehlt; beim Laden und Einblenden nicht durchscheinen lassen.
+        if (item.image != null) fallback.setVisibility(INVISIBLE);
         fallback.setGravity(Gravity.CENTER);
         fallback.setPadding(Ui.dp(context, 12), 0, Ui.dp(context, 12), 0);
         addView(fallback, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
@@ -51,6 +54,11 @@ final class ShelfCard extends FrameLayout {
                 Gravity.CENTER_VERTICAL | Gravity.START));
 
         setLayoutParams(new android.widget.LinearLayout.LayoutParams(width, height));
+    }
+
+    /** Bild ließ sich nicht laden: Titel zeigen. */
+    void showFallback() {
+        fallback.setVisibility(VISIBLE);
     }
 
     void focus(boolean focused, int dx) {

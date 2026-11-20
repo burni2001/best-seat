@@ -23,7 +23,7 @@ import java.util.concurrent.Executors;
 
 /**
  * Lädt Bilder für den Top Shelf (http(s), content://, android.resource://), verkleinert
- * auf die Zielbreite, Zwischenspeicher im RAM (30 Bilder) und auf dem internen Speicher
+ * auf die Zielbreite, Zwischenspeicher im RAM (40 Bilder) und auf dem internen Speicher
  * (cache/shelf, höchstens 300 Dateien). Nie auf den USB-Stick.
  */
 final class Images {
@@ -37,7 +37,7 @@ final class Images {
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static final ExecutorService POOL = Executors.newFixedThreadPool(3);
     // Nach Anzahl begrenzt: Eine LruCache-Unterklasse mit sizeOf() bringt d8 (build-tools 34) zum Absturz.
-    private static final LruCache<String, Bitmap> MEMORY = new LruCache<>(30);
+    private static final LruCache<String, Bitmap> MEMORY = new LruCache<>(40);
 
     private Images() {}
 
@@ -47,12 +47,26 @@ final class Images {
 
     /** Bild in die ImageView laden; ein späterer Aufruf für dieselbe View gewinnt. */
     static void into(Context context, String uri, int maxWidth, ImageView view) {
+        into(context, uri, maxWidth, view, null);
+    }
+
+    /** Wie oben; onFail läuft, wenn kein Bild kam. Bilder aus dem RAM erscheinen sofort, ohne Einblenden. */
+    static void into(Context context, String uri, int maxWidth, ImageView view, Runnable onFail) {
         view.setTag(uri);
+        Bitmap hit = MEMORY.get(uri);
+        if (hit != null) {
+            view.setImageBitmap(hit);
+            view.setAlpha(1f);
+            return;
+        }
         load(context, uri, maxWidth, bmp -> {
-            if (uri.equals(view.getTag()) && bmp != null) {
+            if (!uri.equals(view.getTag())) return;
+            if (bmp != null) {
                 view.setImageBitmap(bmp);
                 view.setAlpha(0f);
                 view.animate().alpha(1f).setDuration(Ui.ms(180)).start();
+            } else if (onFail != null) {
+                onFail.run();
             }
         });
     }

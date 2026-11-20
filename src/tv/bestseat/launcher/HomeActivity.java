@@ -1353,7 +1353,7 @@ public final class HomeActivity extends Activity
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(width, height);
             if (i > 0) lp.leftMargin = gap;
             cardRow.addView(card, lp);
-            if (item.image != null) Images.into(this, item.image, width, card.image);
+            if (item.image != null) Images.into(this, item.image, width, card.image, card::showFallback);
             if (currentTileView != null) card.setNextFocusDownId(currentTileView.getId());
             if (i == 0) card.setNextFocusLeftId(card.getId());
             card.setOnFocusChangeListener((v, has) -> {
