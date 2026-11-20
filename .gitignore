@@ -1,0 +1,13 @@
+# Build output
+build/
+*.apk
+# Coverage/profiling leftovers
+*.profraw
+# Signing key stays local (backed up separately)
+*.keystore
+*.jks
+# Secrets (never commit)
+*.env
+.env*
+# macOS
+.DS_Store

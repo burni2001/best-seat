@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Die Aerial-Videos liegen auf sylvan.apple.com; dessen Zertifikat endet bei „Apple Root CA“,
+     das Android nicht kennt. Nur für diese Domain zusätzlich dieser Wurzel vertrauen. -->
+<network-security-config>
+    <domain-config>
+        <domain includeSubdomains="false">sylvan.apple.com</domain>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="@raw/apple_root_ca" />
+        </trust-anchors>
+    </domain-config>
+</network-security-config>

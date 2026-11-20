@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="HomeTheme" parent="@android:style/Theme.Material.NoActionBar.Fullscreen">
+        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:windowShowWallpaper">false</item>
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:colorAccent">#4A90FF</item>
+        <!-- Schatten weicher wie tvOS: mehr Umgebungs-, weniger gerichteter Schatten. -->
+        <item name="android:ambientShadowAlpha">0.10</item>
+        <item name="android:spotShadowAlpha">0.14</item>
+    </style>
+    <style name="PageTheme" parent="@android:style/Theme.Material.NoActionBar.Fullscreen">
+        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:colorAccent">#4A90FF</item>
+    </style>
+    <!-- Kontrollzentrum: durchsichtiges Fenster über der laufenden App. -->
+    <style name="OverlayTheme" parent="@android:style/Theme.Material.NoActionBar.Fullscreen">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:colorAccent">#4A90FF</item>
+    </style>
+    <!-- All Apps: durchsichtig nur für den Hintergrund „Blurred“ (aus dem App Switcher). -->
+    <style name="AllAppsTheme" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
+</resources>

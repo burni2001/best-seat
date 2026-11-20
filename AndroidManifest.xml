@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="tv.bernhard.launcher">
+
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+    <!-- App Switcher (aus tv.bernhard.appswitcher übernommen): zuletzt genutzte Apps. -->
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
+    <!-- VPN-Anzeige in der Kopfzeile. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Top Shelf: Vorschaukanäle und Watch Next der Apps (normale Berechtigung). -->
+    <uses-permission android:name="com.android.providers.tv.permission.READ_EPG_DATA" />
+    <uses-permission android:name="android.permission.READ_TV_LISTINGS" />
+
+    <uses-feature android:name="android.software.leanback" android:required="false" />
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+
+    <application
+        android:label="Best Seat"
+        android:icon="@mipmap/ic_launcher"
+        android:banner="@drawable/banner"
+        android:allowBackup="false"
+        android:hardwareAccelerated="true"
+        android:networkSecurityConfig="@xml/network_security_config">
+
+        <!-- Startseite. HOME macht die App zum möglichen Standard-Launcher; solange AT4K
+             Standard ist, startet man sie über ihre Kachel (LEANBACK_LAUNCHER). -->
+        <activity
+            android:name=".HomeActivity"
+            android:label="Best Seat"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:stateNotNeeded="true"
+            android:clearTaskOnLaunch="true"
+            android:excludeFromRecents="true"
+            android:resumeWhilePausing="true"
+            android:screenOrientation="landscape"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|smallestScreenSize|uiMode|density"
+            android:windowSoftInputMode="adjustNothing"
+            android:theme="@style/HomeTheme">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+            <!-- Lädt Apps und Kachelbilder neu (tvQuickActions). -->
+            <intent-filter>
+                <action android:name="tv.bernhard.launcher.REFRESH" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <!-- Größte Banner der Apps ohne Inhalte exportieren (adb, für eigenes Hochskalieren). -->
+            <intent-filter>
+                <action android:name="tv.bernhard.launcher.EXPORT_BANNERS" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".SettingsActivity"
+            android:label="Best Seat settings"
+            android:exported="false"
+            android:theme="@style/PageTheme" />
+
+        <activity
+            android:name=".DiagnosticsActivity"
+            android:label="Top Shelf diagnostics"
+            android:exported="false"
+            android:theme="@style/PageTheme" />
+        <!-- Bildschirmschoner: startet nach der Ruhezeit auf der Startseite oder per Intent
+             tv.bernhard.launcher.SCREENSAVER (z. B. tvQuickActions). Eigene Aufgabe, damit
+             nach dem Beenden wieder die vorherige App erscheint. -->
+        <activity
+            android:name=".ScreensaverActivity"
+            android:label="Best Seat screensaver"
+            android:exported="true"
+            android:taskAffinity="tv.bernhard.launcher.saver"
+            android:launchMode="singleTask"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:screenOrientation="landscape"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|smallestScreenSize|uiMode|density"
+            android:theme="@style/PageTheme">
+            <intent-filter>
+                <action android:name="tv.bernhard.launcher.SCREENSAVER" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- Kontrollzentrum: über jeder App per Intent tv.bernhard.launcher.CONTROL_CENTER
+             (tvQuickActions), auf der Startseite per Menü-Taste. -->
+        <activity
+            android:name=".ControlCenterActivity"
+            android:label="Control Center"
+            android:exported="true"
+            android:taskAffinity="tv.bernhard.launcher.control"
+            android:launchMode="singleTask"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|smallestScreenSize|uiMode|density"
+            android:theme="@style/OverlayTheme">
+            <intent-filter>
+                <action android:name="tv.bernhard.launcher.CONTROL_CENTER" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- 4K-Test (exportiert, damit er per adb startbar ist; zeigt nur ein Testbild). -->
+        <activity
+            android:name=".FourKTestActivity"
+            android:label="4K test"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:theme="@style/PageTheme" />
+        <!-- App Switcher: Leiste der zuletzt genutzten Apps (von überall per Intent, z. B. tvQuickActions). -->
+        <!-- All Apps (aus dem App Switcher übernommen, 0.6.3), Action für tvQuickActions. -->
+        <activity
+            android:name=".allapps.AllAppsActivity"
+            android:label="All Apps"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:taskAffinity=""
+            android:theme="@style/AllAppsTheme">
+            <intent-filter>
+                <action android:name="tv.bernhard.launcher.ALL_APPS" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".switcher.SwitcherActivity"
+            android:label="App Switcher"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="tv.bernhard.launcher.SWITCHER" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- Letzte App: springt ohne sichtbare Oberfläche zur vorherigen App und zurück. -->
+        <activity
+            android:name=".switcher.LastAppActivity"
+            android:label="Last app"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.NoDisplay">
+            <intent-filter>
+                <action android:name="tv.bernhard.launcher.LAST_APP" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+        <!-- Bildmenü immer frisch, ohne alte Einstellungsseite darunter (Prime-Taste, seit 0.17.17). -->
+        <activity
+            android:name=".PictureSettingsActivity"
+            android:label="Picture settings"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.NoDisplay">
+            <intent-filter>
+                <action android:name="tv.bernhard.launcher.PICTURE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
