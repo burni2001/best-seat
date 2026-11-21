@@ -17,7 +17,7 @@
 
 ## Highlights
 
-|---|---|
+| | |
 | <img src="docs/screenshots/top-shelf.png" alt="Top shelf"> | **Top shelf.** Focus an app in the top row and the screen fills with its previews. You can jump straight into a show or film. |
 | <img src="docs/screenshots/control-center.png" alt="Control center"> | **Control center.** Double-press HOME to open it. It has profiles, picture and sound, inputs, Ambilight and Ambience (Hue Sync), the screensaver and restart, all over a frosted-glass panel. |
 | <img src="docs/screenshots/folders.png" alt="Folders"> | **Folders and dock.** Group apps into folders, pin favourites to the top row and hide what you never use. |
