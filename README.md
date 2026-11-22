@@ -12,14 +12,14 @@
 ---
 
 <p align="center">
-  <img src="docs/screenshots/home.png" width="860" alt="Home screen">
+  <img src="docs/screenshots/top-shelf.png" width="860" alt="Top shelf">
 </p>
 
 ## Highlights
 
-| **Top shelf** | **Control center** | **Folders** | **App switcher** | **All apps overview**| **Settings** |
+| **Clean look** | **Control center** | **Folders** | **App switcher** | **All apps overview**| **Settings** |
 |---|---|---|---|---|---|
-| <img src="docs/screenshots/top-shelf.png" alt="Top shelf"> | <img src="docs/screenshots/control-center.png" alt="Control center"> | <img src="docs/screenshots/folders.png" alt="Folders"> | <img src="docs/screenshots/switcher.png" alt="App switcher"> | <img src="docs/screenshots/all-apps.png" alt="All apps"> | <img src="docs/screenshots/settings.png" alt="Settings"> |
+| <img src="docs/screenshots/home.png" alt="Home screen"> | <img src="docs/screenshots/control-center.png" alt="Control center"> | <img src="docs/screenshots/folders.png" alt="Folders"> | <img src="docs/screenshots/switcher.png" alt="App switcher"> | <img src="docs/screenshots/all-apps.png" alt="All apps"> | <img src="docs/screenshots/settings.png" alt="Settings"> |
 
 ## Requirements
 
