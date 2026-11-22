@@ -17,13 +17,13 @@
 
 ## Highlights
 
-| **Clean look** | **Control center** | **Folders** | **App switcher** | **All apps overview**| **Settings** |
-|---|---|---|---|---|---|
-| <img src="docs/screenshots/home.png" alt="Home screen"> | <img src="docs/screenshots/control-center.png" alt="Control center"> | <img src="docs/screenshots/folders.png" alt="Folders"> | <img src="docs/screenshots/switcher.png" alt="App switcher"> | <img src="docs/screenshots/all-apps.png" alt="All apps"> | <img src="docs/screenshots/settings.png" alt="Settings"> |
+| **Control center** | **Folders** | **App switcher** | **All apps overview**| **Settings** |
+|---|---|---|---|---|
+| <img src="docs/screenshots/control-center.png" alt="Control center"> | <img src="docs/screenshots/folders.png" alt="Folders"> | <img src="docs/screenshots/switcher.png" alt="App switcher"> | <img src="docs/screenshots/all-apps.png" alt="All apps"> | <img src="docs/screenshots/settings.png" alt="Settings"> |
 
 ## Requirements
 
-Best Seat was built for one TV, a **Philips OLED with Google TV (Android 14, 1080p UI)**. Most of it works on any Google TV or Android TV device with **Android 8.0 (API 26) or newer**. Some parts need extra setup or only work on Philips TVs.
+Best Seat was built for our own TV, a **Philips Ambilight OLED with Google TV (Android 14, 1080p UI)**. Most of it should work on any Google TV or Android TV device with **Android 8.0 (API 26) or newer**. Some parts need extra setup or only work on Philips TVs with Ambilight.
 
 ### Works everywhere (with some setup)
 
