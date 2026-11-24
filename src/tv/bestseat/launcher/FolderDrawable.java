@@ -89,6 +89,11 @@ final class FolderDrawable extends Drawable {
             }
             c.restore();
         }
+        if (LiquidGlass.on) {
+            // Glass: Ordnerkachel wie eine Glasfläche, schwächer, weil sie ruht. Radius wie die Kacheln.
+            float d = LiquidGlass.density();
+            LiquidGlass.draw(c, new RectF(b), Ui.TILE_RADIUS_DP * d, d, 0.6f);
+        }
     }
 
     private static Drawable copy(Drawable d) {

@@ -257,7 +257,7 @@ public final class SettingsActivity extends Activity {
         });
         Switch glass = Ui.toggle(this);
         glass.setChecked(Prefs.liquidGlass(this));
-        LinearLayout glassRow = row("Liquid Glass", glass, "Give panels, menus and the dock a glass edge and sheen.");
+        LinearLayout glassRow = row("Glass", glass, "Give panels, menus, folders and the dock a glass edge and sheen.");
         glassRow.setTag("liquid_glass");
         glassRow.setOnClickListener(v -> {
             Prefs.setLiquidGlass(this, !Prefs.liquidGlass(this));

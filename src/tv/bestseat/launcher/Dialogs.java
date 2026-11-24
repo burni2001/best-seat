@@ -181,7 +181,7 @@ final class Dialogs {
         TextView t = Ui.text(activity, title, 24, Ui.FOLDER_TITLE, true);
         t.setGravity(Gravity.CENTER);
         t.setPadding(Ui.dp(activity, 15), Ui.dp(activity, 4), Ui.dp(activity, 15), Ui.dp(activity, 5));
-        t.setBackground(Ui.rounded(Ui.FOLDER_PILL, Ui.dp(activity, 6)));
+        t.setBackground(Ui.roundedGlass(Ui.FOLDER_PILL, Ui.dp(activity, 6), 0.8f));
         LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
         tp.bottomMargin = Ui.dp(activity, 18);
@@ -191,8 +191,8 @@ final class Dialogs {
         box.setOrientation(LinearLayout.VERTICAL);
         int p = Ui.dp(activity, 18);
         // tvOS: Kasten schwarz 45 % (hell #FEFDFF 50 %), Radius 60 px.
-        box.setBackground(Ui.rounded(Ui.light ? Color.argb(128, 254, 253, 255) : Color.argb(115, 0, 0, 0),
-                Ui.dp(activity, 30)));
+        box.setBackground(Ui.roundedGlass(Ui.light ? Color.argb(128, 254, 253, 255) : Color.argb(115, 0, 0, 0),
+                Ui.dp(activity, 30), 1f));
         box.setOutlineProvider(new RoundedOutline(Ui.dp(activity, 30)));
         box.setClipToOutline(true);
         LinearLayout content = new LinearLayout(activity);

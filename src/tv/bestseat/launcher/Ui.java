@@ -179,6 +179,15 @@ final class Ui {
         return d;
     }
 
+    /** Wie rounded(), bei Glass mit Glanz und Lichtrand (strength 1 = Fenster, 0.6 = ruhende Flächen). */
+    static GradientDrawable roundedGlass(int color, float radiusPx, float strength) {
+        GradientDrawable d = LiquidGlass.on ? new LiquidGlass.Rounded(LiquidGlass.density(), strength)
+                : new GradientDrawable();
+        d.setColor(color);
+        d.setCornerRadius(radiusPx);
+        return d;
+    }
+
     static GradientDrawable rounded(int color, float radiusPx) {
         GradientDrawable d = new GradientDrawable();
         d.setColor(color);
