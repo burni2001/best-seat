@@ -444,7 +444,9 @@ final class Dialogs {
         row.setFocusable(true);
         row.setClickable(true);
         row.setMinimumHeight(Ui.dp(activity, 35));
-        row.setPadding(Ui.dp(activity, 8), 0, Ui.dp(activity, 8), 0);
+        // Glass: Pille braucht mehr Abstand, sonst klebt der Text an der runden Kante.
+        int side = Ui.dp(activity, LiquidGlass.on ? 14 : 8);
+        row.setPadding(side, 0, side, 0);
         TextView text = Ui.text(activity, label, 13, Ui.TEXT, true);
         text.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 12.5f);
         row.addView(text, Ui.fill());
@@ -459,7 +461,8 @@ final class Dialogs {
             row.addView(sym);
         }
         final TextView symView = sym;
-        float r = Ui.dp(activity, 8.5f);
+        // Glass: Fokus als Pille (Wunsch des Nutzers).
+        float r = LiquidGlass.on ? Ui.dp(activity, 999) : Ui.dp(activity, 8.5f);
         row.setOnFocusChangeListener((v, has) -> {
             v.setBackground(has ? Ui.rounded(Ui.MENU_FOCUSED, r) : null);
             text.setTextColor(has ? focused : normal);
