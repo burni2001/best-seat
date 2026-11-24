@@ -51,6 +51,20 @@ public final class SwitcherPrefs {
                 .edit().putBoolean(KEY_ENABLED, enabled).apply();
     }
 
+    /** Darstellung: 0 = Karten (tvOS), 1 = Leiste mit Kacheln nebeneinander (alter App Switcher, W125). */
+    public static final String[] STYLE_NAMES = {"Cards", "Bar"};
+    public static final int STYLE_CARDS = 0;
+    public static final int STYLE_BAR = 1;
+    private static final String KEY_STYLE = "switcher_style";
+
+    public static int style(Context context) {
+        return Prefs.settings(context).getInt(KEY_STYLE, STYLE_CARDS);
+    }
+
+    public static void setStyle(Context context, int style) {
+        Prefs.settings(context).edit().putInt(KEY_STYLE, style).apply();
+    }
+
     /** Globaler Schalter „Blur effects“ der Launcher-Einstellungen. */
     public static boolean allBlur(Context context) {
         return Prefs.blurEnabled(context);

@@ -183,7 +183,8 @@ public final class SettingsActivity extends Activity {
             choiceParent = parent;
             choiceTag = tag;
             choiceIcon = parent == null ? ControlItems.HOME : PAGE_HOME.equals(parent) ? ControlItems.ALL_APPS
-                    : PAGE_SAVER.equals(parent) ? ControlItems.SCREENSAVER : ControlItems.HOME;
+                    : PAGE_SAVER.equals(parent) ? ControlItems.SCREENSAVER
+                    : PAGE_SWITCHER.equals(parent) ? ControlItems.APP_SWITCHER : ControlItems.HOME;
             page = PAGE_CHOICE;
             build();
             int c = Math.max(0, Math.min(names.length - 1, get.getAsInt()));
@@ -410,6 +411,10 @@ public final class SettingsActivity extends Activity {
             tv.bestseat.launcher.switcher.SwitcherPrefs.setBlurEnabled(this, next);
             blur.setChecked(next);
         });
+        choiceRow("Style", tv.bestseat.launcher.switcher.SwitcherPrefs.STYLE_NAMES,
+                () -> tv.bestseat.launcher.switcher.SwitcherPrefs.style(this),
+                i -> tv.bestseat.launcher.switcher.SwitcherPrefs.setStyle(this, i),
+                "Choose between the large cards and a bar with the apps side by side.", "switcher_style");
         LinearLayout hiddenRow = row("Hidden apps", Ui.dimText(this, "\u203A"), "Choose which apps never show up in the bar.");
         hiddenRow.setTag("page:" + PAGE_SWITCHER_HIDDEN);
         hiddenRow.setOnClickListener(v -> {

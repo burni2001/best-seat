@@ -226,6 +226,15 @@ public class SwitcherActivity extends Activity {
             Toast.makeText(this, "adb not reachable, running state unknown",
                     Toast.LENGTH_SHORT).show();
         }
+        if (SwitcherPrefs.style(this) == SwitcherPrefs.STYLE_BAR) {
+            if (apps.isEmpty()) {
+                Toast.makeText(this, "No recent apps", Toast.LENGTH_SHORT).show();
+                finish();
+                return;
+            }
+            setContentView(buildBar(apps, stopped, blurred));
+            return;
+        }
         setContentView(buildLayout(apps, stopped, shot, blurred));
     }
 
@@ -517,7 +526,7 @@ public class SwitcherActivity extends Activity {
             case KeyEvent.KEYCODE_DPAD_UP:
                 if (first && currentCard().pkg != null) {
                     Card c = currentCard();
-                    forceQuit(c, c.pkg, c.label, c.stopped);
+                    forceQuit(c.pkg, c.label, c.stopped, () -> removeTile(c));
                 }
                 return true;
             case KeyEvent.KEYCODE_DPAD_DOWN:
@@ -551,7 +560,7 @@ public class SwitcherActivity extends Activity {
         finish();
     }
 
-    private void forceQuit(Card tile, String pkg, CharSequence label, boolean stopped) {
+    private void forceQuit(String pkg, CharSequence label, boolean stopped, Runnable removed) {
         if (quitting) {
             return;
         }
@@ -579,7 +588,7 @@ public class SwitcherActivity extends Activity {
                 RecentApps.markForceQuit(this, pkg);
                 Toast.makeText(this, label + (stopped ? " removed" : " closed"),
                         Toast.LENGTH_SHORT).show();
-                removeTile(tile);
+                removed.run();
             });
         }).start();
     }
@@ -601,6 +610,225 @@ public class SwitcherActivity extends Activity {
         }
         focus = Math.min(index, cards.size() - 1);
         place(true);
+    }
+
+    // ------------------------------------------------- Leiste (alter App Switcher, W125)
+
+    private static final int BAR_RADIUS_DP = 24;
+    private static final int BAR_FOCUS_RADIUS_DP = 18;
+    private static final int BAR_BANNER_RADIUS_DP = 15;
+    /** So weit schaut die Nachbarkachel beim Scrollen herein. */
+    private static final int BAR_PEEK_DP = 60;
+    private LinearLayout barRow;
+    private BarScrollView barScroller;
+    private int barScrollTarget;
+
+    /** Leiste mit Kacheln nebeneinander, mittig über der unscharfen oder abgedunkelten App. */
+    private View buildBar(List<String> apps, Set<String> stopped, Bitmap blurred) {
+        FrameLayout root = new FrameLayout(this);
+        if (blurred != null) {
+            BitmapDrawable drawable = new BitmapDrawable(getResources(), blurred);
+            drawable.setFilterBitmap(true);
+            root.setBackground(drawable);
+        } else {
+            root.setBackgroundColor(Color.argb(150, 0, 0, 0));
+        }
+        root.setOnClickListener(v -> finish());
+        root.setFocusable(View.NOT_FOCUSABLE);
+        root.setClipChildren(false);
+
+        barRow = new LinearLayout(this);
+        barRow.setOrientation(LinearLayout.HORIZONTAL);
+        barRow.setPadding(dp(24), dp(24), dp(24), dp(24));
+        barRow.setClipChildren(false);
+        barRow.setClipToPadding(false);
+        android.animation.LayoutTransition transition = new android.animation.LayoutTransition();
+        transition.setAnimator(android.animation.LayoutTransition.DISAPPEARING, null);
+        transition.setDuration(android.animation.LayoutTransition.CHANGE_DISAPPEARING, 260);
+        barRow.setLayoutTransition(transition);
+
+        GradientDrawable panel = new GradientDrawable();
+        panel.setColor(Color.argb(235, 30, 30, 34));
+        barScroller = new BarScrollView(this);
+        barScroller.setBackground(panel);
+        barScroller.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) ->
+                panel.setCornerRadius(v.getWidth() < root.getWidth() ? dp(BAR_RADIUS_DP) : 0));
+        barScroller.setHorizontalScrollBarEnabled(false);
+        barScroller.setClipChildren(false);
+        barScroller.setClipToPadding(false);
+        barScroller.addView(barRow);
+        root.addView(barScroller, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER));
+
+        for (String pkg : apps) {
+            View tile = buildBarTile(pkg, stopped.contains(pkg));
+            if (tile != null) {
+                barRow.addView(tile);
+            }
+        }
+        // Die erste Kachel ist die App, aus der man kommt; der Fokus startet auf der vorigen.
+        if (barRow.getChildCount() > 0) {
+            int start = fromHome ? 0 : 1;
+            barRow.getChildAt(Math.min(start, barRow.getChildCount() - 1)).requestFocus();
+        }
+        return root;
+    }
+
+    private View buildBarTile(String pkg, boolean stopped) {
+        PackageManager pm = getPackageManager();
+        CharSequence label;
+        Drawable banner;
+        Drawable icon;
+        try {
+            ApplicationInfo info = pm.getApplicationInfo(pkg, 0);
+            label = pm.getApplicationLabel(info);
+            banner = pm.getApplicationBanner(info);
+            icon = pm.getApplicationIcon(info);
+        } catch (PackageManager.NameNotFoundException e) {
+            return null;
+        }
+        LinearLayout tile = new LinearLayout(this);
+        tile.setOrientation(LinearLayout.VERTICAL);
+        tile.setGravity(Gravity.CENTER_HORIZONTAL);
+        tile.setPadding(dp(12), dp(12), dp(12), dp(12));
+        tile.setFocusable(true);
+        tile.setClickable(true);
+        GradientDrawable normal = new GradientDrawable();
+        normal.setColor(Color.TRANSPARENT);
+        normal.setCornerRadius(dp(BAR_FOCUS_RADIUS_DP));
+        GradientDrawable focused = new GradientDrawable();
+        focused.setColor(Color.argb(255, 70, 70, 80));
+        focused.setCornerRadius(dp(BAR_FOCUS_RADIUS_DP));
+        tile.setBackground(normal);
+        tile.setRevealOnFocusHint(false);
+        tile.setOnFocusChangeListener((v, hasFocus) -> {
+            v.setBackground(hasFocus ? focused : normal);
+            v.animate().scaleX(hasFocus ? 1.08f : 1f).scaleY(hasFocus ? 1.08f : 1f)
+                    .setDuration(156).start();
+            if (hasFocus) {
+                scrollBarTo(v);
+            }
+        });
+
+        ImageView image = new ImageView(this);
+        if (banner != null) {
+            image.setImageDrawable(banner);
+            image.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        } else {
+            image.setImageDrawable(icon);
+            image.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            image.setPadding(dp(16), dp(12), dp(16), dp(12));
+            image.setBackgroundColor(Color.argb(255, 55, 55, 62));
+        }
+        image.setOutlineProvider(new tv.bestseat.launcher.RoundedOutline(dp(BAR_BANNER_RADIUS_DP)));
+        image.setClipToOutline(true);
+        tile.addView(image, new LinearLayout.LayoutParams(dp(160), dp(90)));
+
+        TextView text = new TextView(this);
+        text.setText(label);
+        text.setTextColor(Color.WHITE);
+        text.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        text.setTypeface(Fonts.get(this, Fonts.BOLD));
+        text.setLetterSpacing(0.02f);
+        text.setGravity(Gravity.CENTER);
+        text.setMaxLines(1);
+        text.setEllipsize(TextUtils.TruncateAt.END);
+        text.setPadding(0, dp(8), 0, 0);
+        tile.addView(text, new LinearLayout.LayoutParams(dp(160), ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        // Weißer Punkt unter laufenden Apps; ohne adb unbekannt, dann keine Punkte.
+        View dot = new View(this);
+        GradientDrawable dotShape = new GradientDrawable();
+        dotShape.setShape(GradientDrawable.OVAL);
+        dotShape.setColor(Color.WHITE);
+        dot.setBackground(dotShape);
+        dot.setVisibility(!stopped && runningKnown ? View.VISIBLE : View.INVISIBLE);
+        LinearLayout.LayoutParams dotParams = new LinearLayout.LayoutParams(dp(6), dp(6));
+        dotParams.topMargin = dp(6);
+        tile.addView(dot, dotParams);
+
+        tile.setOnClickListener(v -> {
+            Intent intent = RecentApps.launchIntent(this, pkg);
+            if (intent != null) {
+                startActivity(intent);
+            }
+            finish();
+        });
+        // Pfeil hoch: Force Quit. Pfeil runter: App-Info (wie bei den Karten).
+        tile.setOnKeyListener((v, keyCode, event) -> {
+            if (keyCode != KeyEvent.KEYCODE_DPAD_UP && keyCode != KeyEvent.KEYCODE_DPAD_DOWN) {
+                return false;
+            }
+            if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
+                if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+                    forceQuit(pkg, label, stopped, () -> removeBarTile(v));
+                } else {
+                    openAppInfo(pkg);
+                }
+            }
+            return true;
+        });
+        return tile;
+    }
+
+    /** Weich scrollen: erste Kachel an den Anfang, letzte ans Ende, sonst Nachbar 60 dp sichtbar. */
+    private void scrollBarTo(View tile) {
+        if (barRow.getWidth() == 0) {
+            tile.post(() -> {
+                if (tile.hasFocus()) {
+                    scrollBarTo(tile);
+                }
+            });
+            return;
+        }
+        int max = Math.max(0, barRow.getWidth() - barScroller.getWidth());
+        int index = barRow.indexOfChild(tile);
+        int target;
+        if (index <= 0) {
+            target = 0;
+        } else if (index >= barRow.getChildCount() - 1) {
+            target = max;
+        } else {
+            int peek = dp(BAR_PEEK_DP);
+            int left = tile.getLeft() - peek;
+            int right = tile.getRight() + peek;
+            target = Math.min(Math.max(barScrollTarget, 0), max);
+            if (left < target) {
+                target = left;
+            } else if (right > target + barScroller.getWidth()) {
+                target = right - barScroller.getWidth();
+            }
+        }
+        target = Math.min(Math.max(target, 0), max);
+        barScrollTarget = target;
+        if (target != barScroller.getScrollX()) {
+            barScroller.smoothScrollTo(target, 0);
+        }
+    }
+
+    /** Kachel gleitet nach oben weg, die übrigen rücken nach. */
+    private void removeBarTile(View tile) {
+        int index = barRow.indexOfChild(tile);
+        if (index < 0) {
+            return;
+        }
+        int neighbor = index + 1 < barRow.getChildCount() ? index + 1 : index - 1;
+        if (neighbor >= 0) {
+            barRow.getChildAt(neighbor).requestFocus();
+        }
+        tile.setFocusable(false);
+        tile.animate().translationY(-tile.getHeight()).alpha(0f).setDuration(325)
+                .setInterpolator(new AccelerateInterpolator())
+                .withEndAction(() -> {
+                    barRow.removeView(tile);
+                    if (barRow.getChildCount() == 0) {
+                        finish();
+                        return;
+                    }
+                    if (barRow.findFocus() == null) {
+                        barRow.getChildAt(Math.min(index, barRow.getChildCount() - 1)).requestFocus();
+                    }
+                }).start();
     }
 
     private void openAppInfo(String pkg) {
