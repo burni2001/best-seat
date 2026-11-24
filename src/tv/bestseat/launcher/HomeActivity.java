@@ -999,8 +999,9 @@ public final class HomeActivity extends Activity
     }
 
     /**
-     * Kachelbild ersetzen (W126): Adresse einer kleinen Webseite zeigen, die am Handy oder Rechner
-     * im WLAN eine Bild-URL oder eine Bilddatei annimmt. Der Server läuft nur, solange das Fenster offen ist.
+     * Kachelbild ersetzen (W126): Bild-URL direkt eingeben (Tastatur des TVs) oder den QR-Code mit dem
+     * Handy scannen; die Seite dahinter nimmt ein Bild zum Hochladen an. Der kleine Server läuft nur,
+     * solange das Fenster offen ist.
      */
     void changeImage(Tile tile) {
         final Dialogs.Panel[] holder = new Dialogs.Panel[1];
@@ -1010,45 +1011,124 @@ public final class HomeActivity extends Activity
             refreshTiles(tile.key);
         });
         String url = server.start();
-        Dialogs.Panel p = Dialogs.panel(this, "Change Image", 520);
+        Dialogs.Panel p = Dialogs.panel(this, "Change Image", 560);
         holder[0] = p;
-        if (url == null) {
-            p.content.addView(Ui.text(this, "The TV has no Wi-Fi or network address right now.", 16, Ui.TEXT_DIM, false));
-        } else {
-            TextView how = Ui.text(this, "On your phone or computer in the same network, open:", 16, Ui.TEXT_DIM, false);
-            how.setMaxLines(3);
-            p.content.addView(how);
-            TextView address = Ui.text(this, url.substring("http://".length()), 24, Ui.TEXT, true);
-            address.setPadding(0, Ui.dp(this, 10), 0, Ui.dp(this, 6));
-            p.content.addView(address);
-            TextView tip = Ui.text(this, "Paste an image address or upload a picture there. Wide images (16:9) fit best.",
-                    14, Ui.TEXT_DIM, false);
-            tip.setMaxLines(3);
-            p.content.addView(tip);
+
+        LinearLayout top = new LinearLayout(this);
+        top.setOrientation(LinearLayout.HORIZONTAL);
+        top.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        LinearLayout left = new LinearLayout(this);
+        left.setOrientation(LinearLayout.VERTICAL);
+        left.addView(Ui.text(this, "Image address", 14, Ui.TEXT_DIM, true));
+        android.widget.EditText input = new android.widget.EditText(this);
+        input.setSingleLine(true);
+        input.setHint("https://\u2026");
+        input.setHintTextColor(Ui.TEXT_DIM);
+        input.setTextColor(Ui.TEXT);
+        input.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 14.5f);
+        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_URI);
+        input.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_GO);
+        input.setPadding(Ui.dp(this, 12), Ui.dp(this, 8), Ui.dp(this, 12), Ui.dp(this, 8));
+        input.setBackground(Ui.rounded(Ui.BUTTON, Ui.dp(this, 8)));
+        LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        ip.topMargin = Ui.dp(this, 6);
+        left.addView(input, ip);
+        TextView tip = Ui.text(this, "Wide images (16:9) fit best.", 13, Ui.TEXT_DIM, false);
+        tip.setPadding(0, Ui.dp(this, 8), 0, 0);
+        left.addView(tip);
+        top.addView(left, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+        if (url != null) {
+            LinearLayout right = new LinearLayout(this);
+            right.setOrientation(LinearLayout.VERTICAL);
+            right.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
+            android.widget.ImageView qr = new android.widget.ImageView(this);
+            qr.setImageBitmap(qrBitmap(url));
+            qr.setBackground(Ui.rounded(Color.WHITE, Ui.dp(this, 8)));
+            int pad = Ui.dp(this, 6);
+            qr.setPadding(pad, pad, pad, pad);
+            right.addView(qr, new LinearLayout.LayoutParams(Ui.dp(this, 150), Ui.dp(this, 150)));
+            TextView scan = Ui.text(this, "Scan to upload a picture", 13, Ui.TEXT_DIM, false);
+            scan.setGravity(android.view.Gravity.CENTER);
+            scan.setPadding(0, Ui.dp(this, 8), 0, 0);
+            right.addView(scan);
+            LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT);
+            rp.leftMargin = Ui.dp(this, 24);
+            top.addView(right, rp);
         }
-        View spacer = new View(this);
-        p.content.addView(spacer, new LinearLayout.LayoutParams(1, Ui.dp(this, 16)));
-        LinearLayout first = null;
+        LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        tlp.bottomMargin = Ui.dp(this, 14);
+        p.content.addView(top, tlp);
+
+        Runnable useAddress = () -> loadImageFrom(tile, input.getText().toString().trim());
+        Dialogs.actionRow(this, p, "Use This Address", useAddress);
+        input.setOnEditorActionListener((v, actionId, e) -> {
+            p.dialog.dismiss();
+            useAddress.run();
+            return true;
+        });
         if (TileImages.has(this, tile.pkg)) {
-            first = Dialogs.actionRow(this, p, "Use App Image", () -> {
+            Dialogs.actionRow(this, p, "Use App Image", () -> {
                 TileImages.remove(this, tile.pkg);
                 refreshTiles(tile.key);
             });
         }
-        LinearLayout done = Dialogs.actionRow(this, p, "Done", () -> { });
-        if (first == null) first = done;
+        Dialogs.actionRow(this, p, "Done", () -> { });
         show(p);
         // show() setzt den eigenen Schließen-Hörer; der Server endet mit dem Fenster.
-        android.content.DialogInterface.OnDismissListener base = d -> {
+        p.dialog.setOnDismissListener(d -> {
             if (openDialog == p.dialog) openDialog = null;
             if (childDialog != null) {
                 childDialog.dismiss();
                 childDialog = null;
             }
             server.stop();
-        };
-        p.dialog.setOnDismissListener(base);
-        first.requestFocus();
+        });
+        input.requestFocus();
+    }
+
+    /** Eingegebene Bild-URL im Hintergrund laden und als Kachelbild speichern. */
+    private void loadImageFrom(Tile tile, String address) {
+        if (address.isEmpty()) return;
+        if (!address.startsWith("http://") && !address.startsWith("https://")) address = "https://" + address;
+        final String from = address;
+        Toast.makeText(this, "Loading image\u2026", Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            byte[] data = ImageServer.download(from);
+            boolean ok = data != null && TileImages.save(this, tile.pkg, data);
+            runOnUiThread(() -> {
+                if (isDestroyed()) return;
+                if (!ok) {
+                    Toast.makeText(this, data == null ? "Could not load that address" : "That is not an image",
+                            Toast.LENGTH_LONG).show();
+                    return;
+                }
+                Toast.makeText(this, "New image for " + tile.label, Toast.LENGTH_SHORT).show();
+                refreshTiles(tile.key);
+            });
+        }, "tile-image").start();
+    }
+
+    /** QR-Code als Bild: schwarze Module auf Weiß mit zwei Modulen Ruhezone (dazu der weiße Rahmen). */
+    private static android.graphics.Bitmap qrBitmap(String text) {
+        boolean[][] m = QrCode.encode(text);
+        int n = m.length;
+        int quiet = 2;
+        int scale = 8;
+        int w = (n + 2 * quiet) * scale;
+        int[] px = new int[w * w];
+        for (int y = 0; y < w; y++) {
+            for (int x = 0; x < w; x++) {
+                int mx = x / scale - quiet;
+                int my = y / scale - quiet;
+                boolean dark = mx >= 0 && my >= 0 && mx < n && my < n && m[my][mx];
+                px[y * w + x] = dark ? Color.BLACK : Color.WHITE;
+            }
+        }
+        return android.graphics.Bitmap.createBitmap(px, w, w, android.graphics.Bitmap.Config.ARGB_8888);
     }
 
     /** Kacheln neu aufbauen (neues Bild), Fokus bleibt auf der Kachel. */

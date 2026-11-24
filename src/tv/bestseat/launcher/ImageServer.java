@@ -152,7 +152,8 @@ final class ImageServer {
         main.post(listener::onSaved);
     }
 
-    private static byte[] download(String address) {
+    /** Bild von einer http(s)-Adresse laden (höchstens 15 MB); null bei Fehler. */
+    static byte[] download(String address) {
         if (!address.startsWith("http://") && !address.startsWith("https://")) return null;
         try {
             HttpURLConnection con = (HttpURLConnection) new URL(address).openConnection();
