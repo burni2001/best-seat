@@ -202,7 +202,7 @@ final class Ui {
 
     /** Tönung einer Glas-Kachel (über dem unscharfen Hintergrund, falls vorhanden). */
     static int glassTint() {
-        return light ? Color.argb(105, 255, 255, 255) : Color.argb(46, 255, 255, 255);
+        return light ? Color.argb(80, 255, 255, 255) : Color.argb(34, 255, 255, 255);
     }
 
     /** Wie evenShadow, bei Glass ohne Schatten: Er schiene durch die durchsichtige Kachel als dunkler Fleck. */
