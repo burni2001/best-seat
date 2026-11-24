@@ -574,6 +574,13 @@ public class AllAppsActivity extends Activity {
     // ---------------------------------------------------------------- Aktionen
 
     private void launch(AppList.Entry app) {
+        if (LauncherBridge.vpnCheck(this, app.pkg, app.label, app.launchIntent(), () -> launchNow(app))) {
+            return;
+        }
+        launchNow(app);
+    }
+
+    private void launchNow(AppList.Entry app) {
         if (!startSafely(app.launchIntent())) {
             return;
         }

@@ -83,6 +83,23 @@ public final class Prefs {
         put(c, K_NON_TV_APPS, value);
     }
 
+    private static final String K_VPN_APPS = "vpn_prompt_apps";
+
+    /** Apps, vor deren Start bei getrenntem VPN gefragt wird (W127). */
+    static java.util.Set<String> vpnApps(Context c) {
+        java.util.Set<String> out = new java.util.HashSet<>();
+        for (String p : sp(c).getString(K_VPN_APPS, "").split(",")) {
+            if (!p.isEmpty()) out.add(p);
+        }
+        return out;
+    }
+
+    static void setVpnApp(Context c, String pkg, boolean ask) {
+        java.util.Set<String> set = vpnApps(c);
+        if (ask) set.add(pkg); else set.remove(pkg);
+        sp(c).edit().putString(K_VPN_APPS, String.join(",", set)).apply();
+    }
+
     static boolean showVpn(Context c) {
         return getBool(c, K_SHOW_VPN, true);
     }

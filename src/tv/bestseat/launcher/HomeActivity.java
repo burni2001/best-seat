@@ -878,6 +878,7 @@ public final class HomeActivity extends Activity
             storage.start(tile);
             return;
         }
+        if (tile.kind == Tile.APP && VpnGate.check(this, tile.pkg, tile.label, tile.intent, () -> launch(tile))) return;
         launch(tile);
     }
 

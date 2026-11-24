@@ -67,4 +67,10 @@ public final class LauncherBridge {
         p.dialog.show();
         if (first != null) first.requestFocus();
     }
+
+    /** VPN-Abfrage vor dem Start (W127); true = Fenster gezeigt, open startet später. */
+    public static boolean vpnCheck(Activity activity, String pkg, String label, android.content.Intent launch,
+            Runnable open) {
+        return VpnGate.check(activity, pkg, label, launch, open);
+    }
 }

@@ -94,6 +94,7 @@ public final class SettingsActivity extends Activity {
     private static final String PAGE_SWITCHER = "switcher";
     private static final String PAGE_SWITCHER_HIDDEN = "switcher_hidden";
     private static final String PAGE_BACKUP = "backup";
+    private static final String PAGE_VPN_APPS = "vpn_apps";
     /** Auswahl einer Option als eigene Unterseite mit Haken (wie tvOS „Erscheinungsbild“). */
     private static final String PAGE_CHOICE = "choice";
     private String choiceTitle;
@@ -129,6 +130,9 @@ public final class SettingsActivity extends Activity {
         } else if (PAGE_CONTROL.equals(page)) {
             title.setText("Control Center");
             controlRows();
+        } else if (PAGE_VPN_APPS.equals(page)) {
+            title.setText("Ask for VPN");
+            vpnAppsRows();
         } else if (PAGE_BACKUP.equals(page)) {
             title.setText("Backup");
             backupRows();
@@ -146,6 +150,7 @@ public final class SettingsActivity extends Activity {
         else if (PAGE_CONTROL.equals(page)) icon = ControlItems.SETTINGS;
         else if (PAGE_SWITCHER.equals(page) || PAGE_SWITCHER_HIDDEN.equals(page)) icon = ControlItems.APP_SWITCHER;
         else if (PAGE_BACKUP.equals(page)) icon = ControlItems.RESTART;
+        else if (PAGE_VPN_APPS.equals(page)) icon = ControlItems.VPN;
         else if (PAGE_CHOICE.equals(page)) icon = choiceIcon;
         else icon = ControlItems.HOME;
         pageIcon.setImageDrawable(new ControlIcons.Icon(icon, Ui.light ? android.graphics.Color.argb(255, 70, 70, 74)
@@ -373,6 +378,13 @@ public final class SettingsActivity extends Activity {
             Prefs.setShowVpn(this, !Prefs.showVpn(this));
             vpn.setChecked(Prefs.showVpn(this));
         });
+        LinearLayout vpnAppsRow = row("Ask for VPN", Ui.dimText(this, "\u203A"),
+                "Choose apps that offer to connect the VPN first when it is off.");
+        vpnAppsRow.setTag("page:" + PAGE_VPN_APPS);
+        vpnAppsRow.setOnClickListener(v -> {
+            page = PAGE_VPN_APPS;
+            build();
+        });
 
         section("Apps");
         row("All Apps", Ui.dimText(this, "\u203A"), "See every app in one list, hidden ones too.")
@@ -425,6 +437,34 @@ public final class SettingsActivity extends Activity {
                 .setOnClickListener(v -> tv.bestseat.launcher.switcher.AdbAccess.request(this));
         row("Open App Switcher", null, "Show the recent apps bar now.").setOnClickListener(v ->
                 startActivity(new Intent(this, tv.bestseat.launcher.switcher.SwitcherActivity.class)));
+    }
+
+    /** Apps, die vor dem Start bei getrenntem VPN fragen (W127). Schalter an = fragen. */
+    private void vpnAppsRows() {
+        android.content.pm.PackageManager pm = getPackageManager();
+        java.util.Map<String, String> apps = new java.util.TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        for (String category : new String[] {Intent.CATEGORY_LEANBACK_LAUNCHER, Intent.CATEGORY_LAUNCHER}) {
+            Intent query = new Intent(Intent.ACTION_MAIN).addCategory(category);
+            for (android.content.pm.ResolveInfo ri : pm.queryIntentActivities(query, 0)) {
+                String pkg = ri.activityInfo.packageName;
+                if (pkg.equals(getPackageName()) || pkg.equals(VpnGate.VPN_APP) || !seen.add(pkg)) continue;
+                apps.put(ri.loadLabel(pm) + "\u0000" + pkg, pkg);
+            }
+        }
+        java.util.Set<String> chosen = Prefs.vpnApps(this);
+        for (java.util.Map.Entry<String, String> e : apps.entrySet()) {
+            String pkg = e.getValue();
+            String label = e.getKey().substring(0, e.getKey().indexOf('\u0000'));
+            Switch sw = Ui.toggle(this);
+            sw.setChecked(chosen.contains(pkg));
+            LinearLayout r = row(label, sw, "Offer to connect the VPN before this app opens.");
+            r.setOnClickListener(v -> {
+                boolean next = !Prefs.vpnApps(this).contains(pkg);
+                Prefs.setVpnApp(this, pkg, next);
+                sw.setChecked(next);
+            });
+        }
     }
 
     /** Apps, die in der Leiste nie erscheinen (Blacklist). Schalter an = ausgeblendet. */
@@ -562,7 +602,8 @@ public final class SettingsActivity extends Activity {
                     closeChoice();
                 } else {
                     String was = page;
-                    page = PAGE_SWITCHER_HIDDEN.equals(was) ? PAGE_SWITCHER : null;
+                    page = PAGE_SWITCHER_HIDDEN.equals(was) ? PAGE_SWITCHER
+                            : PAGE_VPN_APPS.equals(was) ? PAGE_HOME : null;
                     build();
                     focusTag("page:" + was);
                 }
