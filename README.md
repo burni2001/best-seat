@@ -12,24 +12,18 @@
 ---
 
 <p align="center">
-  <img src="docs/screenshots/home.png" width="860" alt="Home screen">
+  <img src="docs/screenshots/top-shelf.png" width="860" alt="Top shelf">
 </p>
 
 ## Highlights
 
-| | |
-|---|---|
-| <img src="docs/screenshots/top-shelf.png" alt="Top shelf"> | **Top shelf.** Focus an app in the top row and the screen fills with its previews. You can jump straight into a show or film. |
-| <img src="docs/screenshots/control-center.png" alt="Control center"> | **Control center.** Double-press HOME to open it. It has profiles, picture and sound, inputs, Ambilight and Ambience (Hue Sync), the screensaver and restart, all over a frosted-glass panel. |
-| <img src="docs/screenshots/folders.png" alt="Folders"> | **Folders and dock.** Group apps into folders, pin favourites to the top row and hide what you never use. |
-| <img src="docs/screenshots/switcher.png" alt="App switcher"> | **App switcher.** Recent apps appear as a card stack. You can jump back or close an app. |
-| <img src="docs/screenshots/all-apps.png" alt="All apps"> | **All apps.** Every installed app in one list, including the ones hidden from the home screen. |
-| <img src="docs/screenshots/screensaver.png" alt="Screensaver"> | **Screensaver.** It shows aerial videos or online photos. The clock hops around the screen, so nothing stays static on an OLED. |
-| <img src="docs/screenshots/settings.png" alt="Settings"> | **Settings.** Light and dark mode, six fonts, clock and time zone, profiles, layout backup and restore. |
+| **Control center** | **Folders** | **App switcher** | **All apps overview**| **Settings** |
+|---|---|---|---|---|
+| <img src="docs/screenshots/control-center.png" alt="Control center"> | <img src="docs/screenshots/folders.png" alt="Folders"> | <img src="docs/screenshots/switcher.png" alt="App switcher"> | <img src="docs/screenshots/all-apps.png" alt="All apps"> | <img src="docs/screenshots/settings.png" alt="Settings"> |
 
 ## Requirements
 
-Best Seat was built for one TV, a **Philips OLED with Google TV (Android 14, 1080p UI)**. Most of it works on any Google TV or Android TV device with **Android 8.0 (API 26) or newer**. Some parts need extra setup or only work on Philips TVs.
+Best Seat was built for our own TV, a **Philips Ambilight OLED with Google TV (Android 14, 1080p UI)**. Most of it should work on any Google TV or Android TV device with **Android 8.0 (API 26) or newer**. Some parts need extra setup or only work on Philips TVs with Ambilight.
 
 ### Works everywhere (with some setup)
 
