@@ -69,6 +69,23 @@ final class Dialogs {
         return panel(activity, title, 220);
     }
 
+    /** Klein gerechnetes, weichgezeichnetes Bild des Fensters hinter dem Menü (mit der leichten Abdunklung). */
+    private static android.graphics.Bitmap screenBehind(Activity activity) {
+        try {
+            View root = activity.getWindow().getDecorView();
+            if (root.getWidth() <= 0 || root.getHeight() <= 0) return null;
+            android.graphics.Bitmap small = android.graphics.Bitmap.createBitmap(192, 108,
+                    android.graphics.Bitmap.Config.ARGB_8888);
+            android.graphics.Canvas c = new android.graphics.Canvas(small);
+            c.scale(192f / root.getWidth(), 108f / root.getHeight());
+            root.draw(c);
+            c.drawColor(Color.argb(77, 0, 0, 0));
+            return Snapshot.blur(small);
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
     static Panel panel(Activity activity, String title, int widthDp) {
         Dialog dialog = new Dialog(activity, android.R.style.Theme_Translucent_NoTitleBar);
         FrameLayout dim = new FrameLayout(activity);
@@ -84,7 +101,14 @@ final class Dialogs {
         int p = Ui.dp(activity, narrow ? 0 : 16);
         panel.setPadding(p, 0, p, Ui.dp(activity, narrow ? 5 : 12));
         float radius = Ui.dp(activity, 15);
-        panel.setBackground(Ui.material(activity, radius));
+        android.graphics.drawable.GradientDrawable panelBg = Ui.material(activity, radius);
+        // Glass: eigenes Milchglas mit Lupe statt der Fensterunschärfe des TVs, die nur grob in Blöcken
+        // rechnet und durch das durchsichtige Menü als eckige Rechtecke durchschien.
+        if (LiquidGlass.on && panelBg instanceof LiquidGlass.Rounded) {
+            android.graphics.Bitmap shot = screenBehind(activity);
+            if (shot != null) ((LiquidGlass.Rounded) panelBg).backdrop(shot, panel);
+        }
+        panel.setBackground(panelBg);
         panel.setElevation(Ui.dp(activity, 15));
 
         if (title != null) {
@@ -136,7 +160,7 @@ final class Dialogs {
 
         // Milchglas, wo der TV Fensterunschärfe kann; sonst bleibt die dunkle Fläche.
         Window w = dialog.getWindow();
-        if (w != null && Build.VERSION.SDK_INT >= 31 && Prefs.blurEnabled(activity)) {
+        if (w != null && Build.VERSION.SDK_INT >= 31 && Prefs.blurEnabled(activity) && !LiquidGlass.on) {
             w.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND);
             WindowManager.LayoutParams a = w.getAttributes();
             a.setBlurBehindRadius(Ui.dp(activity, 30));
