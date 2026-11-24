@@ -495,12 +495,12 @@ public final class HomeActivity extends Activity
         }
         if (hiddenCount > 0 && Prefs.hiddenTile(this)) {
             Tile h = new Tile("builtin:hidden", Tile.HIDDEN_APPS, "Hidden apps");
-            h.color = Color.rgb(44, 46, 54);
+            h.color = Ui.BUILTIN_TILE;
             h.icon = getDrawable(android.R.drawable.ic_menu_view);
             visible.add(h);
         }
         Tile s = new Tile("builtin:settings", Tile.SETTINGS, "Settings");
-        s.color = Color.rgb(44, 46, 54);
+        s.color = Ui.BUILTIN_TILE;
         s.icon = new ControlIcons.Icon(ControlItems.SETTINGS, Color.argb(235, 255, 255, 255));
         if (Prefs.settingsTile(this)) visible.add(s);
 
@@ -562,7 +562,7 @@ public final class HomeActivity extends Activity
             label.setAlpha(0f);
             // tvOS: Name weiß in beiden Designs, weicher Schatten (hell sehr dezent).
             label.setTextColor(Color.WHITE);
-            label.setShadowLayer(Ui.dp(this, 8), 0, Ui.dp(this, 1), Ui.light ? Color.argb(70, 0, 0, 0) : Color.argb(150, 0, 0, 0));
+            label.setShadowLayer(Ui.dp(this, 8), 0, Ui.dp(this, 1), Ui.labelShadow());
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(w, ViewGroup.LayoutParams.WRAP_CONTENT);
             lp.topMargin = Math.round(h * (TileView.FOCUS_SCALE - 1f) / 2f) + Ui.dp(this, 3);
             // Abstand wie im tvOS-Screenshot des Nutzers: 23 px von der vergrößerten Kachel bis zur

@@ -294,7 +294,7 @@ final class TopShelf {
         ValueAnimator a = ValueAnimator.ofFloat(0f, 1f);
         a.setDuration(Ui.ms(freeze ? 450 : 300));
         a.addUpdateListener(an -> setBackdropBlur(fromBlur + (toBlur - fromBlur) * an.getAnimatedFraction()));
-        a.addListener(new FreezeEnd(this, a));
+        a.addListener(new AnimEnd(() -> freezeAnimEnded(a)));
         freezeAnim = a;
         a.start();
         backdrop.animate().alpha(toAlpha).setDuration(Ui.ms(freeze ? 450 : 300)).start();
@@ -316,7 +316,7 @@ final class TopShelf {
 
     /** Passende Farbe für den Hintergrund „Matching color“: aus Banner oder Symbol der App. */
     private int matchColor(Tile tile) {
-        if (tile.banner == null) return tile.color != 0 ? tile.color : Color.rgb(48, 52, 60);
+        if (tile.banner == null) return tile.color != 0 ? tile.color : Ui.TILE_FALLBACK;
         return AppRepository.backgroundFor(tile.banner);
     }
 

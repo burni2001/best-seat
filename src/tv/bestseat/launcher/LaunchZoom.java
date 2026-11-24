@@ -144,7 +144,7 @@ final class LaunchZoom {
             iv.setScaleY(maxScale);
             iv.setTranslationX(sw / 2f - iw / 2f);
             iv.setTranslationY(sh / 2f - ih / 2f);
-            a.addListener(new ZoomEnd(() -> {
+            a.addListener(new AnimEnd(() -> {
                 if (zoomOverlay == box) remove(false);
             }));
             // Erst schrumpfen, wenn die Startseite wirklich zu sehen ist (Fensterfokus); bis dahin steht

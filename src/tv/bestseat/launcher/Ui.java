@@ -32,6 +32,15 @@ final class Ui {
     /** Übergang vom Top Shelf zum Hintergrund der Startseite. */
     static int SHADE_END;
     static boolean light;
+    /** Ersatzfarbe für Kacheln ohne Banner und ohne erkennbare Symbolfarbe. */
+    static final int TILE_FALLBACK = Color.rgb(48, 52, 60);
+    /** Fläche der eingebauten Kacheln „Hidden apps“ und „Settings“. */
+    static final int BUILTIN_TILE = Color.rgb(44, 46, 54);
+
+    /** Schatten der Namen unter Kacheln: hell sehr dezent, dunkel kräftiger. */
+    static int labelShadow() {
+        return light ? Color.argb(70, 0, 0, 0) : Color.argb(150, 0, 0, 0);
+    }
     /** tvOS-Material (Kontextmenü, Hinweisfenster): Fläche, feiner Rand, Fokusfläche. */
     static int MATERIAL;
     static int MATERIAL_STROKE;

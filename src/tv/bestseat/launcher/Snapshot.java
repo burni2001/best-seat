@@ -7,7 +7,7 @@ import android.graphics.Bitmap;
  * Die Startseite zeichnet sich selbst, ohne adb und ohne Fensterunschärfe des Systems; das Ergebnis ist
  * klein (192×108) und wird beim Anzeigen hochskaliert, das glättet zusätzlich.
  */
-final class Snapshot {
+public final class Snapshot {
 
     private static final int BLUR_RADIUS = 3;
     private static final int BLUR_PASSES = 3;
@@ -27,9 +27,9 @@ final class Snapshot {
                 b[i] = px[i] & 0xff;
             }
             for (int pass = 0; pass < BLUR_PASSES; pass++) {
-                box(r, w, h);
-                box(g, w, h);
-                box(b, w, h);
+                boxBlur(r, w, h, BLUR_RADIUS);
+                boxBlur(g, w, h, BLUR_RADIUS);
+                boxBlur(b, w, h, BLUR_RADIUS);
             }
             for (int i = 0; i < px.length; i++) px[i] = 0xff000000 | (r[i] << 16) | (g[i] << 8) | b[i];
             bmp.setPixels(px, 0, w, 0, 0, w, h);
@@ -39,15 +39,18 @@ final class Snapshot {
         }
     }
 
-    /** Waagrecht und senkrecht mitteln, am Rand wird der Randpixel wiederholt. */
-    private static void box(int[] ch, int w, int h) {
+    /**
+     * Ein Kanal, waagrecht und senkrecht über radius Pixel gemittelt, am Rand wird der Randpixel
+     * wiederholt. Auch für den Hintergrund des App Switchers und von All Apps (Backdrop).
+     */
+    public static void boxBlur(int[] ch, int w, int h, int radius) {
         int[] tmp = new int[ch.length];
-        int span = BLUR_RADIUS * 2 + 1;
+        int span = radius * 2 + 1;
         for (int y = 0; y < h; y++) {
             int row = y * w;
             for (int x = 0; x < w; x++) {
                 int sum = 0;
-                for (int k = -BLUR_RADIUS; k <= BLUR_RADIUS; k++) {
+                for (int k = -radius; k <= radius; k++) {
                     sum += ch[row + Math.max(0, Math.min(w - 1, x + k))];
                 }
                 tmp[row + x] = sum / span;
@@ -56,7 +59,7 @@ final class Snapshot {
         for (int x = 0; x < w; x++) {
             for (int y = 0; y < h; y++) {
                 int sum = 0;
-                for (int k = -BLUR_RADIUS; k <= BLUR_RADIUS; k++) {
+                for (int k = -radius; k <= radius; k++) {
                     sum += tmp[Math.max(0, Math.min(h - 1, y + k)) * w + x];
                 }
                 ch[y * w + x] = sum / span;

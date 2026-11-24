@@ -98,7 +98,7 @@ public final class AppRepository {
                 Bitmap bmp = BitmapFactory.decodeFile(cached.getPath());
                 if (bmp != null) ghost.banner = new BitmapDrawable(context.getResources(), bmp);
             }
-            if (ghost.banner == null) ghost.color = Color.rgb(48, 52, 60);
+            if (ghost.banner == null) ghost.color = Ui.TILE_FALLBACK;
             tiles.put(ghost.key, ghost);
         }
 
@@ -195,7 +195,7 @@ public final class AppRepository {
 
     /** Dunkle Fläche aus der mittleren Farbe des Symbols. */
     static int backgroundFor(Drawable icon) {
-        if (icon == null) return Color.rgb(48, 52, 60);
+        if (icon == null) return Ui.TILE_FALLBACK;
         try {
             Bitmap bmp = Bitmap.createBitmap(12, 12, Bitmap.Config.ARGB_8888);
             Drawable d = icon.getConstantState() != null ? icon.getConstantState().newDrawable() : icon;
@@ -210,14 +210,14 @@ public final class AppRepository {
                 }
             }
             bmp.recycle();
-            if (n == 0) return Color.rgb(48, 52, 60);
+            if (n == 0) return Ui.TILE_FALLBACK;
             float[] hsv = new float[3];
             Color.RGBToHSV((int) (r / n), (int) (g / n), (int) (b / n), hsv);
             hsv[1] = Math.min(hsv[1], 0.6f);
             hsv[2] = 0.32f;
             return Color.HSVToColor(hsv);
         } catch (RuntimeException e) {
-            return Color.rgb(48, 52, 60);
+            return Ui.TILE_FALLBACK;
         }
     }
 

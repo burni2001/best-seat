@@ -7,6 +7,8 @@ import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.LayerDrawable;
 
+import tv.bestseat.launcher.Snapshot;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
@@ -130,9 +132,9 @@ public final class Backdrop {
         }
         // Mehrfacher Kastenfilter ergibt einen weichen, fast gaußschen Verlauf.
         for (int pass = 0; pass < BLUR_PASSES; pass++) {
-            boxBlur(r, w, h);
-            boxBlur(g, w, h);
-            boxBlur(b, w, h);
+            Snapshot.boxBlur(r, w, h, BLUR_RADIUS);
+            Snapshot.boxBlur(g, w, h, BLUR_RADIUS);
+            Snapshot.boxBlur(b, w, h, BLUR_RADIUS);
         }
 
         int[] pixels = new int[w * h];
@@ -143,34 +145,5 @@ public final class Backdrop {
                     | Math.round(b[i] * BRIGHTNESS);
         }
         return new Bitmap[] {clear, Bitmap.createBitmap(pixels, w, h, Bitmap.Config.ARGB_8888)};
-    }
-
-    /** Waagrecht und senkrecht mitteln, am Rand wird der Randpixel wiederholt. */
-    private static void boxBlur(int[] channel, int w, int h) {
-        int[] tmp = new int[channel.length];
-        int size = BLUR_RADIUS * 2 + 1;
-        for (int y = 0; y < h; y++) {
-            int row = y * w;
-            for (int x = 0; x < w; x++) {
-                int sum = 0;
-                for (int k = -BLUR_RADIUS; k <= BLUR_RADIUS; k++) {
-                    sum += channel[row + clamp(x + k, w)];
-                }
-                tmp[row + x] = sum / size;
-            }
-        }
-        for (int x = 0; x < w; x++) {
-            for (int y = 0; y < h; y++) {
-                int sum = 0;
-                for (int k = -BLUR_RADIUS; k <= BLUR_RADIUS; k++) {
-                    sum += tmp[clamp(y + k, h) * w + x];
-                }
-                channel[y * w + x] = sum / size;
-            }
-        }
-    }
-
-    private static int clamp(int value, int size) {
-        return value < 0 ? 0 : value >= size ? size - 1 : value;
     }
 }

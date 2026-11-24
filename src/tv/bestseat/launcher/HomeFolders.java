@@ -78,7 +78,7 @@ final class HomeFolders {
             TileView tv = new TileView(home, t, w, h);
             cell.addView(tv);
             TextView label = Ui.text(home, t.label, 13, Color.WHITE, true);
-            label.setShadowLayer(Ui.dp(home, 8), 0, Ui.dp(home, 1), Ui.light ? Color.argb(70, 0, 0, 0) : Color.argb(150, 0, 0, 0));
+            label.setShadowLayer(Ui.dp(home, 8), 0, Ui.dp(home, 1), Ui.labelShadow());
             label.setGravity(Gravity.CENTER);
             label.setAlpha(0f);
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(w, ViewGroup.LayoutParams.WRAP_CONTENT);

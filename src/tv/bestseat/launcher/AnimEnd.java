@@ -3,11 +3,11 @@ package tv.bestseat.launcher;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 
-/** Ende einer Animation (eigene Klasse: d8 im Build kann keine anonymen Klassen). */
-final class ZoomEnd extends AnimatorListenerAdapter {
+/** Ende einer Animation melden (eigene Klasse: d8 im Build kann keine anonymen Klassen). */
+final class AnimEnd extends AnimatorListenerAdapter {
     private final Runnable end;
 
-    ZoomEnd(Runnable end) {
+    AnimEnd(Runnable end) {
         this.end = end;
     }
 

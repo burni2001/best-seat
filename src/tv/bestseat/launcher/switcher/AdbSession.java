@@ -29,8 +29,8 @@ import java.security.spec.X509EncodedKeySpec;
 
 /**
  * Minimaler adb-Client für den adb-Dienst des TVs selbst (Netzwerk-Debugging,
- * 127.0.0.1:5555), nach dem Vorbild von AdbClient im App Switcher. Anders als
- * dort bleibt die Verbindung offen, jeder Befehl bekommt nur einen neuen Kanal.
+ * 127.0.0.1:5555). Die Verbindung bleibt offen, jeder Befehl bekommt einen neuen Kanal;
+ * AdbClient.shell nutzt sie für einzelne Befehle.
  * So kosten viele Tastendrücke hintereinander kaum Zeit.
  * Beim ersten Mal muss am TV „Debugging zulassen“ bestätigt werden.
  */
