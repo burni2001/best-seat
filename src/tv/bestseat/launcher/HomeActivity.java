@@ -87,6 +87,8 @@ public final class HomeActivity extends Activity
     /** Sichtbar seit (uptime), 0 = gestoppt. Für „Home auf der Startseite“: Android pausiert vor onNewIntent. */
     long visibleSince;
     private Dialog openDialog;
+    /** Stand der eigenen Kachelbilder beim letzten Aufbau (TileImages.version). */
+    private int seenImages = TileImages.version;
     /** Menü über dem offenen Fenster (z. B. Kontextmenü einer App im Ordner); schließt mit ihm (B54). */
     private Dialog childDialog;
 
@@ -223,6 +225,11 @@ public final class HomeActivity extends Activity
         ghostPulseUntil = visibleSince + GHOST_PULSE_MS;
         refreshGhosts();
         visibleHome = new java.lang.ref.WeakReference<>(this);
+        if (seenImages != TileImages.version) {
+            // Bild in All Apps geändert: Kacheln neu aufbauen.
+            seenImages = TileImages.version;
+            refreshTiles(focusedKey);
+        }
         zoom.remove(false);
         zoom.maybeZoomBack();
     }
@@ -265,6 +272,7 @@ public final class HomeActivity extends Activity
         if (intent.hasCategory(Intent.CATEGORY_HOME)) {
             // Home schließt die VPN-Abfrage, egal ob sie hier oder in All Apps offen ist.
             VpnGate.dismissOpen();
+            ImageDialog.dismissOpen();
             if (ControlCenterActivity.wasJustOpen()) {
                 // Home bei offenem CC: schließt es animiert, kein Sprung an den Anfang (W104).
                 ControlCenterActivity.closeAnimated(this);
@@ -1006,115 +1014,22 @@ public final class HomeActivity extends Activity
      * solange das Fenster offen ist.
      */
     void changeImage(Tile tile) {
-        final Dialogs.Panel[] holder = new Dialogs.Panel[1];
-        ImageServer server = new ImageServer(this, tile.pkg, tile.label, () -> {
-            if (holder[0] != null && holder[0].dialog.isShowing()) holder[0].dialog.dismiss();
-            Toast.makeText(this, "New image for " + tile.label, Toast.LENGTH_SHORT).show();
-            refreshTiles(tile.key);
-        });
-        String url = server.start();
-        // Aufbau wie die übrigen Eingabefenster (askText): Titel mittig, Text, Feld, Knöpfe untereinander.
-        Dialogs.Panel p = Dialogs.alert(this, "Change Image", url != null
-                ? "Type the address of an image, or scan the code to upload a picture from your phone."
-                : "Type the address of an image.", 300);
-        holder[0] = p;
-        if (url != null) {
-            android.widget.ImageView qr = new android.widget.ImageView(this);
-            qr.setImageBitmap(qrBitmap(url));
-            qr.setBackground(Ui.rounded(Color.WHITE, Ui.dp(this, 8)));
-            int pad = Ui.dp(this, 4);
-            qr.setPadding(pad, pad, pad, pad);
-            LinearLayout.LayoutParams qp = new LinearLayout.LayoutParams(Ui.dp(this, 132), Ui.dp(this, 132));
-            qp.gravity = android.view.Gravity.CENTER_HORIZONTAL;
-            qp.bottomMargin = Ui.dp(this, 14);
-            p.content.addView(qr, qp);
-        }
-        android.widget.EditText input = new android.widget.EditText(this);
-        input.setSingleLine(true);
-        input.setHint("https://\u2026");
-        input.setHintTextColor(Ui.TEXT_DIM);
-        input.setTextColor(Ui.TEXT);
-        input.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 14.5f);
-        input.setTypeface(Fonts.get(this, Fonts.REGULAR));
-        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_URI);
-        input.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_GO);
-        input.setPadding(Ui.dp(this, 12), Ui.dp(this, 8), Ui.dp(this, 12), Ui.dp(this, 8));
-        input.setBackground(Ui.rounded(Ui.BUTTON, Ui.dp(this, 8)));
-        LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT);
-        ip.bottomMargin = Ui.dp(this, 12);
-        p.content.addView(input, ip);
-
-        Runnable useAddress = () -> loadImageFrom(tile, input.getText().toString().trim());
-        Dialogs.alertButton(this, p, "Use Address", useAddress);
-        input.setOnEditorActionListener((v, actionId, e) -> {
-            p.dialog.dismiss();
-            useAddress.run();
-            return true;
-        });
-        if (TileImages.has(this, tile.pkg)) {
-            Dialogs.alertButton(this, p, "Use App Image", () -> {
-                TileImages.remove(this, tile.pkg);
-                refreshTiles(tile.key);
-            });
-        }
-        Dialogs.alertButton(this, p, "Cancel", () -> { });
-        show(p);
-        // show() setzt den eigenen Schließen-Hörer; der Server endet mit dem Fenster.
-        p.dialog.setOnDismissListener(d -> {
-            if (openDialog == p.dialog) openDialog = null;
+        final Dialog[] shown = new Dialog[1];
+        ImageDialog.open(this, tile.pkg, tile.label, () -> refreshTiles(tile.key), p -> {
+            show(p);
+            shown[0] = p.dialog;
+        }, () -> {
+            if (openDialog == shown[0]) openDialog = null;
             if (childDialog != null) {
                 childDialog.dismiss();
                 childDialog = null;
             }
-            server.stop();
         });
-        input.requestFocus();
-    }
-
-    /** Eingegebene Bild-URL im Hintergrund laden und als Kachelbild speichern. */
-    private void loadImageFrom(Tile tile, String address) {
-        if (address.isEmpty()) return;
-        if (!address.startsWith("http://") && !address.startsWith("https://")) address = "https://" + address;
-        final String from = address;
-        Toast.makeText(this, "Loading image\u2026", Toast.LENGTH_SHORT).show();
-        new Thread(() -> {
-            byte[] data = ImageServer.download(from);
-            boolean ok = data != null && TileImages.save(this, tile.pkg, data);
-            runOnUiThread(() -> {
-                if (isDestroyed()) return;
-                if (!ok) {
-                    Toast.makeText(this, data == null ? "Could not load that address" : "That is not an image",
-                            Toast.LENGTH_LONG).show();
-                    return;
-                }
-                Toast.makeText(this, "New image for " + tile.label, Toast.LENGTH_SHORT).show();
-                refreshTiles(tile.key);
-            });
-        }, "tile-image").start();
-    }
-
-    /** QR-Code als Bild: schwarze Module auf Weiß mit zwei Modulen Ruhezone (dazu der weiße Rahmen). */
-    private static android.graphics.Bitmap qrBitmap(String text) {
-        boolean[][] m = QrCode.encode(text);
-        int n = m.length;
-        int quiet = 2;
-        int scale = 8;
-        int w = (n + 2 * quiet) * scale;
-        int[] px = new int[w * w];
-        for (int y = 0; y < w; y++) {
-            for (int x = 0; x < w; x++) {
-                int mx = x / scale - quiet;
-                int my = y / scale - quiet;
-                boolean dark = mx >= 0 && my >= 0 && mx < n && my < n && m[my][mx];
-                px[y * w + x] = dark ? Color.BLACK : Color.WHITE;
-            }
-        }
-        return android.graphics.Bitmap.createBitmap(px, w, w, android.graphics.Bitmap.Config.ARGB_8888);
     }
 
     /** Kacheln neu aufbauen (neues Bild), Fokus bleibt auf der Kachel. */
     private void refreshTiles(String key) {
+        seenImages = TileImages.version;
         focusedKey = key;
         tilesSignature = "";
         reload();

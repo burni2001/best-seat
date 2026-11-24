@@ -19,6 +19,9 @@ final class TileImages {
     /** Größte gespeicherte Breite; Kacheln sind deutlich kleiner. */
     private static final int MAX_WIDTH = 960;
 
+    /** Zählt jede Änderung, damit der Home Screen nach einer Änderung in All Apps neu aufbaut. */
+    static volatile int version;
+
     private TileImages() {}
 
     static File file(Context context, String pkg) {
@@ -57,6 +60,7 @@ final class TileImages {
         f.getParentFile().mkdirs();
         try (FileOutputStream out = new FileOutputStream(f)) {
             bmp.compress(Bitmap.CompressFormat.PNG, 100, out);
+            version++;
             return true;
         } catch (Exception e) {
             f.delete();
@@ -66,5 +70,6 @@ final class TileImages {
 
     static void remove(Context context, String pkg) {
         file(context, pkg).delete();
+        version++;
     }
 }

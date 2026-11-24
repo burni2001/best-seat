@@ -553,13 +553,16 @@ public class AllAppsActivity extends Activity {
     private void showAppActions(AppList.Entry app) {
         boolean hidden = LauncherBridge.isHidden(this, app.pkg);
         LauncherBridge.contextMenu(this, focusedTile,
-                new String[] {hidden ? "Show on Home Screen" : "Hide from Home Screen", "App Info"},
+                new String[] {hidden ? "Show on Home Screen" : "Hide from Home Screen", "Change Image \u2026",
+                    "App Info"},
                 new Runnable[] {
                     () -> {
                         LauncherBridge.setHidden(this, app.pkg, !hidden);
                         Toast.makeText(this, hidden ? "Shown on the home screen" : "Hidden from the home screen",
                                 Toast.LENGTH_SHORT).show();
                     },
+                    // Neues Bild: Liste neu laden, der Fokus bleibt auf der App (focusedPkg).
+                    () -> LauncherBridge.changeImage(this, app.pkg, app.label, this::load),
                     () -> openAppInfo(app.pkg)
                 });
     }

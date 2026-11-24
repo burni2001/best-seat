@@ -78,4 +78,9 @@ public final class LauncherBridge {
     public static Drawable customImage(Context context, String pkg) {
         return TileImages.load(context, pkg);
     }
+
+    /** Fenster „Change Image“ (W126) für eine App; changed läuft nach einem neuen oder entfernten Bild. */
+    public static void changeImage(Activity activity, String pkg, String label, Runnable changed) {
+        ImageDialog.open(activity, pkg, label, changed, p -> p.dialog.show(), () -> { });
+    }
 }
