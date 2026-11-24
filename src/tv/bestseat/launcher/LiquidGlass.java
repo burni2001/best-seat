@@ -52,22 +52,22 @@ final class LiquidGlass {
 
         // Glanz: oberes Drittel leicht aufgehellt, als wäre die Fläche gewölbt.
         // Dunkel: leichter Cyan-Schimmer wie die tvOS-Gläser (#1cbbff, aus dem Design System des Nutzers).
-        int sheenTop = light ? Color.argb(Math.round(105 * s), 255, 255, 255)
-                : Color.argb(Math.round(52 * s), 160, 222, 255);
+        int sheenTop = light ? Color.argb(Math.round(140 * s), 255, 255, 255)
+                : Color.argb(Math.round(72 * s), 160, 222, 255);
         SHEEN.setShader(new LinearGradient(0, r.top, 0, r.top + r.height() * 0.5f,
                 sheenTop, Color.TRANSPARENT, Shader.TileMode.CLAMP));
         c.save();
         c.clipPath(shape);
         c.drawRect(r, SHEEN);
         if (!light) {
-            CYAN.setColor(Color.argb(Math.round(16 * s), 28, 187, 255));
+            CYAN.setColor(Color.argb(Math.round(20 * s), 28, 187, 255));
             c.drawRect(r, CYAN);
         }
 
         // Innerer Lichtsaum: breit und schwach, deutet die Brechung am Rand an.
-        float glowW = 7f * density;
+        float glowW = 9f * density;
         GLOW.setStrokeWidth(glowW);
-        int glowA = Math.round((light ? 80 : 42) * s);
+        int glowA = Math.round((light ? 110 : 62) * s);
         GLOW.setShader(new LinearGradient(r.left, r.top, r.right, r.bottom,
                 light ? new int[] {Color.argb(glowA, 255, 255, 255), Color.argb(glowA / 4, 255, 255, 255),
                         Color.argb(glowA / 2, 255, 255, 255)}
@@ -75,13 +75,20 @@ final class LiquidGlass {
                         Color.argb(glowA / 2, 170, 228, 255)},
                 new float[] {0f, 0.55f, 1f}, Shader.TileMode.CLAMP));
         c.drawPath(shape, GLOW);
+
+        // Reflex unten: schwacher Lichtsaum am unteren Rand, wie durchs Glas gefallenes Licht.
+        int lowA = Math.round((light ? 70 : 40) * s);
+        SHEEN.setShader(new LinearGradient(0, r.bottom, 0, r.bottom - r.height() * 0.22f,
+                light ? Color.argb(lowA, 255, 255, 255) : Color.argb(lowA, 170, 228, 255),
+                Color.TRANSPARENT, Shader.TileMode.CLAMP));
+        c.drawRect(r, SHEEN);
         c.restore();
 
         // Lichtrand: dünn, hell oben links, fast weg in der Mitte, wieder heller unten rechts.
-        float rimW = Math.max(1f, 1.2f * density);
+        float rimW = Math.max(1f, 1.5f * density);
         // Doppelt so breit und innen beschnitten: sichtbar bleibt die innere Hälfte, auch an runden Ecken.
         RIM.setStrokeWidth(rimW * 2f);
-        int hi = Math.round((light ? 160 : 150) * s);
+        int hi = Math.round((light ? 210 : 200) * s);
         RIM.setShader(new LinearGradient(r.left, r.top, r.right, r.bottom,
                 new int[] {Color.argb(hi, 255, 255, 255), Color.argb(Math.round(14 * s), 255, 255, 255),
                         Color.argb(Math.round(hi * 0.55f), 255, 255, 255)},

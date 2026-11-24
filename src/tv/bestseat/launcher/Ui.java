@@ -174,7 +174,7 @@ final class Ui {
         int color = Color.rgb(Color.red(MATERIAL), Color.green(MATERIAL), Color.blue(MATERIAL));
         GradientDrawable d = LiquidGlass.on ? new LiquidGlass.Rounded(LiquidGlass.density(), 1f) : new GradientDrawable();
         // Glass: durchsichtiger, der Hintergrund scheint durch (Wunsch des Nutzers).
-        if (LiquidGlass.on) color = Color.argb(light ? 175 : 165, Color.red(color), Color.green(color), Color.blue(color));
+        if (LiquidGlass.on) color = Color.argb(light ? 135 : 125, Color.red(color), Color.green(color), Color.blue(color));
         d.setColor(color);
         d.setCornerRadius(radiusPx);
         d.setStroke(Math.max(1, dp(context, 0.5f)), MATERIAL_STROKE);

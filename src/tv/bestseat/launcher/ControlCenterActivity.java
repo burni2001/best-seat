@@ -99,8 +99,8 @@ public final class ControlCenterActivity extends Activity {
         if (blurred != null && Prefs.blurEnabled(this)) {
             // Milchglas: nur was hinter dem Kasten liegt, weichgezeichnet (W102).
             panel.setBackground(new GlassDrawable(blurred, panel, Ui.dp(this, PANEL_RADIUS_DP),
-                    Ui.light ? Color.argb(LiquidGlass.on ? 95 : 150, 238, 240, 244)
-                            : Color.argb(LiquidGlass.on ? 70 : 120, 28, 30, 36),
+                    Ui.light ? Color.argb(LiquidGlass.on ? 60 : 150, 238, 240, 244)
+                            : Color.argb(LiquidGlass.on ? 40 : 120, 28, 30, 36),
                     Ui.MATERIAL_STROKE, Math.max(1, Ui.dp(this, 0.5f))));
         } else {
             // tvOS-Material: dunkle Glasfläche mit feinem hellem Rand.
