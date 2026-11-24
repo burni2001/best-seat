@@ -49,8 +49,6 @@ public final class HomeActivity extends Activity
     private static final String TAG = "Launcher.Home";
     static final String ACTION_REFRESH = "tv.bestseat.launcher.REFRESH";
     static final String ACTION_EXPORT_BANNERS = "tv.bestseat.launcher.EXPORT_BANNERS";
-    /** Eigene, hochskalierte Banner: <Paketname>.png in diesem Ordner ersetzt das Banner der App im Top Shelf. */
-    static final String HD_BANNER_DIR = "banners-hd";
     static final String ACTION_HIDDEN = "tv.bestseat.launcher.SHOW_HIDDEN";
 
     // Wie der tvOS-Screenshot des Nutzers: Leiste ab ~785 px, nächste Reihe ab ~1056 px (~24 px sichtbar).
@@ -63,6 +61,7 @@ public final class HomeActivity extends Activity
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
 
     private LayoutStore store;
+    private final HomeBanners banners = new HomeBanners(this);
     private List<Tile> allTiles = new ArrayList<>();
     private final List<TileView> tileViews = new ArrayList<>();
     private final List<Tile> visible = new ArrayList<>();
@@ -261,14 +260,14 @@ public final class HomeActivity extends Activity
             // Von Hand angestoßen (Fernbedienung über den Google TV Helper): immer neu aufbauen, auch wenn
             // sich an den Apps nichts geändert hat, und kurz Bescheid geben (W119).
             ShelfContent.invalidate();
-            heroBanners.clear();
+            banners.clear();
             tilesSignature = "";
             android.widget.Toast.makeText(this, "Refreshing home screen…", android.widget.Toast.LENGTH_SHORT).show();
             reload();
             return;
         }
         if (ACTION_EXPORT_BANNERS.equals(intent.getAction())) {
-            exportBanners();
+            banners.export(allTiles, worker);
             return;
         }
         if (ACTION_HIDDEN.equals(intent.getAction())) {
@@ -920,163 +919,6 @@ public final class HomeActivity extends Activity
         });
     }
 
-    private final java.util.Map<String, android.graphics.drawable.Drawable> heroBanners = new java.util.HashMap<>();
-
-    /**
-     * Banner für den großen Top Shelf in der höchsten Auflösung, die die App mitliefert (xxxhdpi),
-     * statt der Kachelgröße (320×180 px), die auf 846×476 px hochgezogen unscharf wirkt.
-     */
-    private android.graphics.drawable.Drawable heroBanner(Tile tile) {
-        if (tile.pkg == null) return tile.banner;
-        android.graphics.drawable.Drawable cached = heroBanners.get(tile.key);
-        if (cached != null) return cached;
-        android.graphics.drawable.Drawable hd = hdBanner(tile.pkg);
-        if (hd != null) {
-            heroBanners.put(tile.key, hd);
-            hdDrawables.add(hd);
-            return hd;
-        }
-        android.graphics.drawable.Drawable best = tile.banner;
-        try {
-            android.content.pm.PackageManager pm = getPackageManager();
-            int res = 0;
-            if (tile.component != null) {
-                res = pm.getActivityInfo(tile.component, 0).banner;
-            }
-            android.content.pm.ApplicationInfo ai = pm.getApplicationInfo(tile.pkg, 0);
-            if (res == 0) res = ai.banner;
-            if (res != 0) {
-                android.graphics.drawable.Drawable d = pm.getResourcesForApplication(ai).getDrawableForDensity(res,
-                        android.util.DisplayMetrics.DENSITY_XXXHIGH, null);
-                if (d != null && d.getIntrinsicWidth() > (best != null ? best.getIntrinsicWidth() : 0)) best = d;
-            }
-        } catch (Exception ignored) {
-        }
-        heroBanners.put(tile.key, best);
-        return best;
-    }
-
-    private final java.util.Set<android.graphics.drawable.Drawable> hdDrawables =
-            java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
-
-    /** Hochskaliertes Banner des Nutzers, falls vorhanden (banners-hd/<Paket>.png im App-Ordner). */
-    private android.graphics.drawable.Drawable hdBanner(String pkg) {
-        try {
-            java.io.File dir = getExternalFilesDir(HD_BANNER_DIR);
-            if (dir == null) return null;
-            java.io.File f = new java.io.File(dir, pkg + ".png");
-            if (!f.isFile()) return null;
-            android.graphics.Bitmap b = android.graphics.BitmapFactory.decodeFile(f.getPath());
-            if (b == null) return null;
-            android.graphics.drawable.BitmapDrawable d = new android.graphics.drawable.BitmapDrawable(getResources(), b);
-            // Pixelgröße als Eigengröße (nicht nach Dichte umrechnen): steuert die Anzeigebreite.
-            d.setTargetDensity(getResources().getDisplayMetrics().densityDpi);
-            return d;
-        } catch (RuntimeException | OutOfMemoryError e) {
-            Log.w(TAG, "hd banner failed: " + pkg, e);
-            return null;
-        }
-    }
-
-    /**
-     * Exportiert für alle Apps ohne Top-Shelf-Inhalte das größte Banner als PNG in
-     * banner-export/ (App-Ordner im internen Speicher) samt Liste; per adb abholen.
-     */
-    private void exportBanners() {
-        final List<Tile> tiles = new ArrayList<>();
-        for (Tile t : allTiles) {
-            if (t.members != null) tiles.addAll(t.members);
-            else tiles.add(t);
-        }
-        final Context app = getApplicationContext();
-        worker.execute(() -> {
-            java.io.File dir = app.getExternalFilesDir("banner-export");
-            if (dir == null) return;
-            java.io.File[] old = dir.listFiles();
-            if (old != null) for (java.io.File f : old) f.delete();
-            StringBuilder list = new StringBuilder("package\tname\twidth\theight\tflat\n");
-            int n = 0;
-            for (Tile t : tiles) {
-                if (t.kind != Tile.APP || t.pkg == null) continue;
-                List<ShelfContent.Item> items = ShelfContent.load(app, t.pkg);
-                if (items != null && !items.isEmpty()) continue;
-                android.graphics.drawable.Drawable d = largestBanner(t);
-                if (d == null || d.getIntrinsicWidth() <= 0 || d.getIntrinsicHeight() <= 0) continue;
-                try {
-                    android.graphics.Bitmap b;
-                    if (d instanceof android.graphics.drawable.BitmapDrawable
-                            && ((android.graphics.drawable.BitmapDrawable) d).getBitmap() != null) {
-                        // Originalpixel, nicht die auf den Bildschirm umgerechnete Größe.
-                        b = ((android.graphics.drawable.BitmapDrawable) d).getBitmap();
-                    } else {
-                        int dw = d.getIntrinsicWidth() * 2, dh = d.getIntrinsicHeight() * 2;
-                        b = android.graphics.Bitmap.createBitmap(dw, dh, android.graphics.Bitmap.Config.ARGB_8888);
-                        android.graphics.Canvas c = new android.graphics.Canvas(b);
-                        android.graphics.Rect old2 = new android.graphics.Rect(d.getBounds());
-                        d.setBounds(0, 0, dw, dh);
-                        d.draw(c);
-                        d.setBounds(old2);
-                    }
-                    int w = b.getWidth(), h = b.getHeight();
-                    try (java.io.FileOutputStream out = new java.io.FileOutputStream(new java.io.File(dir, t.pkg + ".png"))) {
-                        b.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out);
-                    }
-                    boolean flat = flatEdgeColor(d) != 0;
-                    list.append(t.pkg).append('\t').append(t.label).append('\t').append(w).append('\t')
-                            .append(h).append('\t').append(flat ? "yes" : "no").append('\n');
-                    n++;
-                } catch (Exception | OutOfMemoryError e) {
-                    Log.w(TAG, "export failed: " + t.pkg, e);
-                }
-            }
-            try (java.io.FileOutputStream out = new java.io.FileOutputStream(new java.io.File(dir, "list.tsv"))) {
-                out.write(list.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            } catch (java.io.IOException e) {
-                Log.w(TAG, "export list failed", e);
-            }
-            Log.i(TAG, "Exported " + n + " banners to " + dir);
-        });
-    }
-
-    /** Größtes Banner der App aus ihren Ressourcen (höchste Dichte), ohne Nutzer-Ersatz. */
-    private android.graphics.drawable.Drawable largestBanner(Tile tile) {
-        android.graphics.drawable.Drawable best = tile.banner;
-        try {
-            android.content.pm.PackageManager pm = getPackageManager();
-            int res = 0;
-            if (tile.component != null) res = pm.getActivityInfo(tile.component, 0).banner;
-            android.content.pm.ApplicationInfo ai = pm.getApplicationInfo(tile.pkg, 0);
-            if (res == 0) res = ai.banner;
-            if (res != 0) {
-                android.graphics.drawable.Drawable d = pm.getResourcesForApplication(ai).getDrawableForDensity(res,
-                        android.util.DisplayMetrics.DENSITY_XXXHIGH, null);
-                if (d != null && d.getIntrinsicWidth() > (best != null ? best.getIntrinsicWidth() : 0)) best = d;
-            }
-        } catch (Exception ignored) {
-        }
-        return best;
-    }
-
-    /**
-     * Randfarbe eines kleinen Banners (unter 600 px breit), wenn alle vier Ecken fast gleich sind,
-     * sonst 0 (dann wird das Banner wie bisher auf die Karte gezogen).
-     */
-    private int flatEdgeColor(android.graphics.drawable.Drawable d) {
-        if (!(d instanceof android.graphics.drawable.BitmapDrawable)) return 0;
-        Bitmap b = ((android.graphics.drawable.BitmapDrawable) d).getBitmap();
-        // Eigene HD-Banner dürfen groß sein, sonst nur kleine Banner (große füllen die Karte).
-        if (b == null || (b.getWidth() >= 600 && !hdDrawables.contains(d))) return 0;
-        int w = b.getWidth() - 3;
-        int h = b.getHeight() - 3;
-        int[] c = {b.getPixel(2, 2), b.getPixel(w, 2), b.getPixel(2, h), b.getPixel(w, h)};
-        for (int x : c) {
-            if (Color.alpha(x) < 250) return 0;
-            if (Math.abs(Color.red(x) - Color.red(c[0])) + Math.abs(Color.green(x) - Color.green(c[0]))
-                    + Math.abs(Color.blue(x) - Color.blue(c[0])) > 30) return 0;
-        }
-        return c[0];
-    }
-
     private android.graphics.Bitmap backdropBmp;
     private Object backdropSource;
     /** Karte, von der man zuletzt in die Favoritenleiste heruntergekommen ist (-1 = keine). */
@@ -1190,8 +1032,8 @@ public final class HomeActivity extends Activity
     }
 
     private void showInShelf(Tile tile) {
-        android.graphics.drawable.Drawable big = tile.banner != null ? heroBanner(tile) : null;
-        int edge = big != null ? flatEdgeColor(big) : 0;
+        android.graphics.drawable.Drawable big = tile.banner != null ? banners.hero(tile) : null;
+        int edge = big != null ? banners.flatEdgeColor(big) : 0;
         boolean hasContent = false;
         if (tile.kind == Tile.APP && tile.pkg != null) {
             List<ShelfContent.Item> cached = ShelfContent.cached(tile.pkg);
@@ -1214,7 +1056,7 @@ public final class HomeActivity extends Activity
             // (Nutzer: 2,25-fach zu schlecht aufgelöst). Große Banner höchstens 846 px.
             int w = Math.min(Ui.dp(this, 423), Math.round(big.getIntrinsicWidth() * 1.6f));
             // Eigenes HD-Banner: wieder so groß wie früher (720 px), jetzt scharf.
-            if (hdDrawables.contains(big)) w = Ui.dp(this, 360);
+            if (banners.isHd(big)) w = Ui.dp(this, 360);
             int padX = (Ui.dp(this, 423) - w) / 2;
             int padY = Math.max(0, (Ui.dp(this, 238) - w * big.getIntrinsicHeight() / Math.max(1, big.getIntrinsicWidth())) / 2);
             hero.setPadding(padX, padY, padX, padY);
