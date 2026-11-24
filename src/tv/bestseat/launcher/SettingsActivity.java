@@ -255,6 +255,16 @@ public final class SettingsActivity extends Activity {
             Prefs.setBlurEnabled(this, !Prefs.blurEnabled(this));
             blurAll.setChecked(Prefs.blurEnabled(this));
         });
+        Switch glass = Ui.toggle(this);
+        glass.setChecked(Prefs.liquidGlass(this));
+        LinearLayout glassRow = row("Liquid Glass", glass, "Give panels, menus and the dock a glass edge and sheen.");
+        glassRow.setTag("liquid_glass");
+        glassRow.setOnClickListener(v -> {
+            Prefs.setLiquidGlass(this, !Prefs.liquidGlass(this));
+            // Neu aufbauen, damit die Seite selbst das neue Glas zeigt; Fokus bleibt auf der Zeile.
+            focusAfterRecreate = "liquid_glass";
+            recreate();
+        });
         externalSettings();
         section("General");
         group(PAGE_BACKUP, "Backup", "Save or restore tiles, folders and settings.");

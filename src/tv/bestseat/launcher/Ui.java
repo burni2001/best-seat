@@ -116,6 +116,7 @@ final class Ui {
     /** Design für diese Seite festlegen; liefert, ob es hell ist. */
     static boolean apply(android.content.Context context) {
         setLight(Prefs.isLight(context));
+        LiquidGlass.on = Prefs.liquidGlass(context);
         return light;
     }
     static final int ACCENT = Color.rgb(74, 144, 255);
@@ -171,7 +172,9 @@ final class Ui {
         // Der TV meldet Fensterunschärfe als aktiv, zeichnet sie aber nicht: Die Kästen dahinter
         // schimmerten scharf durch. Darum deckend statt Milchglas.
         int color = Color.rgb(Color.red(MATERIAL), Color.green(MATERIAL), Color.blue(MATERIAL));
-        GradientDrawable d = rounded(color, radiusPx);
+        GradientDrawable d = LiquidGlass.on ? new LiquidGlass.Rounded(LiquidGlass.density(), 1f) : new GradientDrawable();
+        d.setColor(color);
+        d.setCornerRadius(radiusPx);
         d.setStroke(Math.max(1, dp(context, 0.5f)), MATERIAL_STROKE);
         return d;
     }

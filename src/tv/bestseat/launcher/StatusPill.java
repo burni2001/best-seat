@@ -72,7 +72,10 @@ final class StatusPill extends LinearLayout {
         setClipChildren(false);
         setClipToPadding(false);
         setPadding(dp(14), 0, dp(4), 0);
-        pillBg = Ui.rounded(pillColor(0f), dp(HEIGHT_DP) / 2f);
+        // Bei Liquid Glass mit Glanz und Lichtrand, schwächer, weil die Pille ruht.
+        pillBg = LiquidGlass.on ? new LiquidGlass.Rounded(LiquidGlass.density(), 0.6f) : new GradientDrawable();
+        pillBg.setColor(pillColor(0f));
+        pillBg.setCornerRadius(dp(HEIGHT_DP) / 2f);
         setBackground(pillBg);
 
         time = new TextClock(activity);

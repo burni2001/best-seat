@@ -87,6 +87,7 @@ public final class HomeActivity extends Activity
     private int builtStoreVersion;
     private boolean builtLight;
     private int builtFont;
+    private boolean builtGlass;
     private boolean resumed;
     /** Sichtbar seit (uptime), 0 = gestoppt. Für „Home auf der Startseite“: Android pausiert vor onNewIntent. */
     long visibleSince;
@@ -111,6 +112,7 @@ public final class HomeActivity extends Activity
         UsbNotice.install(this);
         builtLight = Ui.apply(this);
         builtFont = Prefs.font(this);
+        builtGlass = LiquidGlass.on;
         pendingHidden = ACTION_HIDDEN.equals(getIntent().getAction());
         pendingSetup = ACTION_SETUP.equals(getIntent().getAction());
         store = LayoutStore.get(this);
@@ -182,7 +184,8 @@ public final class HomeActivity extends Activity
             statusPill.setVisibility(ControlCenterActivity.hidesHomePill() ? View.INVISIBLE : View.VISIBLE);
         }
         // Erscheinungsbild geändert (Einstellung oder Automatik zur vollen Stunde): Seite neu aufbauen.
-        if (Prefs.isLight(this) != builtLight || Prefs.font(this) != builtFont) {
+        if (Prefs.isLight(this) != builtLight || Prefs.font(this) != builtFont
+                || Prefs.liquidGlass(this) != builtGlass) {
             recreate();
             return;
         }

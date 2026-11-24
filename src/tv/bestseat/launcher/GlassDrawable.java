@@ -62,6 +62,10 @@ final class GlassDrawable extends Drawable {
         float h = stroke.getStrokeWidth() / 2f;
         box.inset(h, h);
         canvas.drawRoundRect(box, radius, radius, stroke);
+        if (LiquidGlass.on) {
+            box.set(b);
+            LiquidGlass.draw(canvas, box, radius, LiquidGlass.density(), 1f);
+        }
     }
 
     @Override

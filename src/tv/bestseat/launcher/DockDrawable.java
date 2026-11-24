@@ -77,6 +77,7 @@ final class DockDrawable extends Drawable {
         p.addRoundRect(r, new float[] {rl, rl, rr, rr, rr, rr, rl, rl}, Path.Direction.CW);
         c.drawPath(p, fill);
         c.drawPath(p, stroke);
+        if (LiquidGlass.on) LiquidGlass.draw(c, p, r, LiquidGlass.density(), 0.6f);
     }
 
     @Override
