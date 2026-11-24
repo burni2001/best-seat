@@ -149,6 +149,25 @@ final class Dialogs {
      * Geöffneter Ordner wie tvOS (W33): unscharfes Bild der Startseite dahinter, Ordnername
      * zentriert über einem kompakten Kasten.
      */
+    /**
+     * Klein gerechnetes, weichgezeichnetes Abbild dessen, was hinter dem Ordnerkasten zu sehen ist:
+     * Startseite mit der grauen Schicht darüber, für die Lupe im Glas.
+     */
+    private static android.graphics.Bitmap lensBackdrop(android.graphics.Bitmap backdrop) {
+        if (backdrop == null) return null;
+        try {
+            android.graphics.Bitmap small = android.graphics.Bitmap.createBitmap(192, 108,
+                    android.graphics.Bitmap.Config.ARGB_8888);
+            android.graphics.Canvas c = new android.graphics.Canvas(small);
+            c.drawBitmap(backdrop, null, new android.graphics.Rect(0, 0, 192, 108),
+                    new android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG));
+            c.drawColor(Color.argb(128, 130, 130, 130));
+            return Snapshot.blur(small);
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
     static Panel folderPanel(Activity activity, String title, int widthDp, int heightDp,
             android.graphics.Bitmap backdrop, View origin) {
         Dialog dialog = new Dialog(activity, android.R.style.Theme_Translucent_NoTitleBar);
@@ -192,8 +211,12 @@ final class Dialogs {
         int p = Ui.dp(activity, 18);
         // tvOS: Kasten schwarz 45 % (hell #FEFDFF 50 %), Radius 60 px.
         int boxA = LiquidGlass.on ? (Ui.light ? 65 : 55) : (Ui.light ? 128 : 115);
-        box.setBackground(Ui.roundedGlass(Ui.light ? Color.argb(boxA, 254, 253, 255) : Color.argb(boxA, 0, 0, 0),
-                Ui.dp(activity, 30), 1f));
+        android.graphics.drawable.GradientDrawable boxBg = Ui.roundedGlass(
+                Ui.light ? Color.argb(boxA, 254, 253, 255) : Color.argb(boxA, 0, 0, 0), Ui.dp(activity, 30), 1f);
+        // Glass: Der Kasten zeigt das unscharfe Bild dahinter durch eine Lupe (wie die Kacheln im Kontrollzentrum).
+        final android.graphics.Bitmap lensShot = LiquidGlass.on ? lensBackdrop(backdrop) : null;
+        if (lensShot != null && boxBg instanceof LiquidGlass.Rounded) ((LiquidGlass.Rounded) boxBg).backdrop(lensShot, box);
+        box.setBackground(boxBg);
         box.setOutlineProvider(new RoundedOutline(Ui.dp(activity, 30)));
         box.setClipToOutline(true);
         LinearLayout content = new LinearLayout(activity);
@@ -250,7 +273,8 @@ final class Dialogs {
                 column.setPivotY(o[1] + origin.getHeight() / 2f - (c[1] - column.getPivotY() * (1 - sx)));
             }
             android.view.animation.DecelerateInterpolator ease = new android.view.animation.DecelerateInterpolator(2f);
-            column.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(Ui.ms(320)).setInterpolator(ease).start();
+            column.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(Ui.ms(320)).setInterpolator(ease)
+                    .setUpdateListener(lensShot != null ? a -> box.invalidate() : null).start();
             if (backdropView != null) backdropView.animate().alpha(1f).setDuration(Ui.ms(260)).start();
             shade.animate().alpha(1f).setDuration(Ui.ms(260)).start();
         }));
