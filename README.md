@@ -12,7 +12,8 @@
 ---
 
 <p align="center">
-  <img src="docs/screenshots/top-shelf.png" width="860" alt="Top shelf">
+  <a href="docs/demo.mp4"><img src="docs/demo.gif" width="860" alt="Best Seat demo: content shelf, folders, control center, app switcher and all apps"></a>
+  <br><sub>Click for the full one-minute demo video.</sub>
 </p>
 
 ## Highlights
@@ -20,6 +21,10 @@
 | **Control center** | **Folders** | **App switcher** | **All apps overview**| **Settings** |
 |---|---|---|---|---|
 | <img src="docs/screenshots/control-center.png" alt="Control center"> | <img src="docs/screenshots/folders.png" alt="Folders"> | <img src="docs/screenshots/switcher.png" alt="App switcher"> | <img src="docs/screenshots/all-apps.png" alt="All apps"> | <img src="docs/screenshots/settings.png" alt="Settings"> |
+
+| **Content shelf** | **Home screen** | **Screensaver** | **Setup assistant** |
+|---|---|---|---|
+| <img src="docs/screenshots/top-shelf.png" alt="Content shelf"> | <img src="docs/screenshots/home.png" alt="Home screen"> | <img src="docs/screenshots/screensaver.png" alt="Screensaver"> | <img src="docs/screenshots/setup-assistant.png" alt="Setup assistant"> |
 
 ## Features
 
