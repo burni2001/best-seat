@@ -137,6 +137,19 @@ public final class ControlCenterActivity extends Activity {
         body.setClipToPadding(false);
         body.setPadding(pad + Ui.dp(this, 6), pad + Ui.dp(this, 6), pad + Ui.dp(this, 6), Ui.dp(this, 3.5f));
         scroll.addView(body);
+        // Schatten der fokussierten Kachel nicht am Rand abschneiden: Solange alles hineinpasst, gibt es
+        // nichts zu scrollen, dann darf über den Kasten hinaus gezeichnet werden. Erst wenn die Liste
+        // scrollt, wieder beschneiden, damit nichts über den Kasten hinausrutscht (B10).
+        scroll.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
+            boolean scrolls = body.getHeight() > scroll.getHeight() - scroll.getPaddingTop() - scroll.getPaddingBottom();
+            if (scroll.getClipToPadding() != scrolls) {
+                scroll.setClipToPadding(scrolls);
+                scroll.setClipChildren(scrolls);
+                panel.setClipChildren(scrolls);
+                scroll.invalidate();
+                panel.invalidate();
+            }
+        });
         // Glas-Kacheln zeigen den Hintergrund an ihrer Stelle: beim Scrollen neu zeichnen.
         scroll.setOnScrollChangeListener((v, x, y, ox, oy) -> {
             if (glassBackdrop != null) refreshGlass(body);
