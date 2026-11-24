@@ -57,6 +57,27 @@ final class LiquidGlass {
     }
 
     /**
+     * Ganz leichter, weicher Lichtschein im oberen linken Viertel (fokussierte App-Kachel), wie Licht,
+     * das von oben links auf das Glas fällt. strength 0..1 blendet ihn ein.
+     */
+    static void glint(Canvas c, RectF r, float radius, float strength) {
+        if (r.width() <= 0 || r.height() <= 0 || strength <= 0f) return;
+        int a = Math.round((Ui.light ? 30 : 24) * Math.min(1f, strength));
+        float cx = r.left + r.width() * 0.27f, cy = r.top + r.height() * 0.24f;
+        float rad = Math.max(r.width(), r.height()) * 0.5f;
+        SHEEN.setShader(new android.graphics.RadialGradient(cx, cy, rad,
+                new int[] {Color.argb(a, 255, 255, 255), Color.argb(Math.round(a * 0.45f), 255, 255, 255),
+                        Color.TRANSPARENT},
+                new float[] {0f, 0.45f, 1f}, Shader.TileMode.CLAMP));
+        Path shape = new Path();
+        shape.addRoundRect(r, radius, radius, Path.Direction.CW);
+        c.save();
+        c.clipPath(shape);
+        c.drawRect(r, SHEEN);
+        c.restore();
+    }
+
+    /**
      * Lichtlauf über die Kante (Fokus einer App-Kachel): ein heller Fleck läuft unten von links nach rechts,
      * gleichzeitig einer oben von rechts nach links. phase 0..1, blendet am Anfang und Ende weich ein und aus.
      */

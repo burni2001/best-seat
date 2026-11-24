@@ -148,7 +148,10 @@ final class TileView extends FrameLayout {
             edgeBox.set(0, 0, getWidth(), getHeight());
             // Die ruhende Kante kommt erst mit dem Ende des Lichtlaufs: in dessen zweiter Hälfte eingeblendet.
             float rest = sweep < 0f ? 1f : Math.max(0f, (sweep - 0.5f) * 2f);
-            if (rest > 0f) LiquidGlass.edge(canvas, edgeBox, radius, LiquidGlass.density(), 0.35f * rest);
+            if (rest > 0f) {
+                LiquidGlass.edge(canvas, edgeBox, radius, LiquidGlass.density(), 0.35f * rest);
+                LiquidGlass.glint(canvas, edgeBox, radius, rest);
+            }
             if (sweep >= 0f) LiquidGlass.sweep(canvas, edgeBox, radius, LiquidGlass.density(), sweep);
         }
     }
