@@ -123,6 +123,12 @@ final class ImageServer {
             return;
         }
         if ("GET".equals(method)) {
+            if (path.startsWith(base + "/current")) {
+                byte[] png = currentImage();
+                if (png == null) respond(out, 404, "text/plain", "Not found");
+                else respond(out, 200, "image/png", png);
+                return;
+            }
             respond(out, 200, "text/html; charset=utf-8", page());
             return;
         }
@@ -182,26 +188,114 @@ final class ImageServer {
         }
     }
 
+    /** Bild, das die Kachel gerade zeigt: eigenes Bild, sonst Banner oder Symbol der App (PNG). */
+    private byte[] currentImage() {
+        try {
+            if (TileImages.has(context, pkg)) {
+                return java.nio.file.Files.readAllBytes(TileImages.file(context, pkg).toPath());
+            }
+            android.content.pm.PackageManager pm = context.getPackageManager();
+            android.graphics.drawable.Drawable d = pm.getApplicationBanner(pkg);
+            boolean banner = d != null;
+            if (d == null) d = pm.getApplicationIcon(pkg);
+            int w = 640;
+            int h = 360;
+            android.graphics.Bitmap bmp = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888);
+            android.graphics.Canvas c = new android.graphics.Canvas(bmp);
+            if (banner) {
+                d.setBounds(0, 0, w, h);
+            } else {
+                c.drawColor(android.graphics.Color.rgb(55, 55, 62));
+                d.setBounds(w / 2 - 90, h / 2 - 90, w / 2 + 90, h / 2 + 90);
+            }
+            d.draw(c);
+            ByteArrayOutputStream buf = new ByteArrayOutputStream();
+            bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, buf);
+            return buf.toByteArray();
+        } catch (Exception e) {
+            Log.w(TAG, "No current image: " + e);
+            return null;
+        }
+    }
+
     private String page() {
         String name = label.replace("&", "&amp;").replace("<", "&lt;");
-        return "<!doctype html><html><head><meta charset=utf-8>"
-                + "<meta name=viewport content='width=device-width,initial-scale=1'>"
-                + "<title>Best Seat – tile image</title><style>"
-                + "body{font-family:system-ui,sans-serif;background:#111;color:#eee;margin:0;padding:24px;max-width:560px}"
-                + "h1{font-size:22px}p{color:#aaa}input,button{font-size:17px;width:100%;box-sizing:border-box;"
-                + "padding:12px;margin:6px 0;border-radius:10px;border:1px solid #444;background:#222;color:#eee}"
-                + "button{background:#3a7bff;border:0;color:#fff;font-weight:600}#msg{margin-top:16px;font-weight:600}"
-                + "</style></head><body><h1>New image for " + name + "</h1>"
-                + "<p>Paste the address of an image, or choose a picture. A wide image (16:9) fits best.</p>"
-                + "<input id=u type=url placeholder='https://…'><button onclick=sendUrl()>Use this address</button>"
-                + "<input id=f type=file accept='image/*'><button onclick=sendFile()>Upload picture</button>"
-                + "<div id=msg></div><script>"
-                + "function show(r){r.text().then(t=>{document.getElementById('msg').textContent=t})}"
-                + "function sendUrl(){fetch(location.pathname+'/url',{method:'POST',body:document.getElementById('u').value})"
-                + ".then(show).catch(()=>{msg.textContent='The TV did not answer.'})}"
-                + "function sendFile(){const f=document.getElementById('f').files[0];if(!f)return;"
-                + "fetch(location.pathname+'/upload',{method:'POST',body:f}).then(show)"
-                + ".catch(()=>{msg.textContent='The TV did not answer.'})}"
+        // Aufbau wie Best Seat: dunkle, abgerundete Flächen, helle Knöpfe, ruhige Schrift.
+        return "<!doctype html><html lang=en><head><meta charset=utf-8>"
+                + "<meta name=viewport content='width=device-width,initial-scale=1,viewport-fit=cover'>"
+                + "<meta name=theme-color content='#0b0c10'>"
+                + "<title>Best Seat – " + name + "</title><style>"
+                + ":root{--bg:#0b0c10;--card:rgba(38,39,46,.72);--line:rgba(255,255,255,.08);--btn:#2c2d34;"
+                + "--text:#f4f4f6;--dim:rgba(244,244,246,.55);--accent:#f5a524;--ok:#34c759;--err:#ff6b5e}"
+                + "*{box-sizing:border-box}html,body{margin:0}"
+                + "body{min-height:100vh;font-family:Inter,-apple-system,system-ui,'Segoe UI',Roboto,sans-serif;"
+                + "color:var(--text);background:radial-gradient(1200px 600px at 20% -10%,#2a2440 0,transparent 60%),"
+                + "radial-gradient(900px 500px at 110% 10%,#123a44 0,transparent 55%),var(--bg);"
+                + "display:flex;justify-content:center;padding:28px 18px 40px;-webkit-font-smoothing:antialiased}"
+                + "main{width:100%;max-width:520px}"
+                + ".brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px;letter-spacing:.2px;"
+                + "color:var(--dim);margin:0 4px 18px}.brand b{color:var(--text);font-weight:700}"
+                + ".dot{width:6px;height:6px;border-radius:50%;background:var(--accent);display:inline-block;margin:0 2px 2px}"
+                + ".card{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:20px;"
+                + "backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);box-shadow:0 20px 60px rgba(0,0,0,.45)}"
+                + "h1{font-size:22px;margin:2px 4px 4px;font-weight:700;letter-spacing:-.2px}"
+                + ".sub{color:var(--dim);font-size:14.5px;margin:0 4px 18px;line-height:1.45}"
+                + ".tile{position:relative;aspect-ratio:16/9;border-radius:16px;overflow:hidden;background:#373740;"
+                + "box-shadow:0 14px 34px rgba(0,0,0,.5);margin-bottom:8px;transition:transform .25s}"
+                + ".tile img{width:100%;height:100%;object-fit:cover;display:block}"
+                + ".tile.new{transform:scale(1.03)}"
+                + ".cap{text-align:center;color:var(--dim);font-size:13px;margin:6px 0 20px}"
+                + ".label{font-size:12px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--dim);"
+                + "margin:18px 6px 8px}"
+                + "input[type=url]{width:100%;font:inherit;font-size:16px;color:var(--text);background:var(--btn);"
+                + "border:1px solid transparent;border-radius:12px;padding:13px 14px;outline:none}"
+                + "input[type=url]:focus{border-color:rgba(255,255,255,.35)}"
+                + "button,.pick{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;font:inherit;"
+                + "font-size:16px;font-weight:600;border:0;border-radius:12px;padding:13px;margin-top:10px;cursor:pointer;"
+                + "background:var(--btn);color:var(--text);transition:transform .12s,background .2s}"
+                + "button:active,.pick:active{transform:scale(.98)}"
+                + "button.primary{background:#f4f4f6;color:#111}button:disabled{opacity:.45}"
+                + ".pick{border:1.5px dashed rgba(255,255,255,.22);background:transparent;padding:22px 13px;"
+                + "flex-direction:column;gap:4px;font-weight:600}.pick small{color:var(--dim);font-weight:500;font-size:13px}"
+                + ".pick.drag{border-color:var(--accent);background:rgba(245,165,36,.08)}"
+                + "input[type=file]{display:none}"
+                + "#msg{min-height:22px;margin:16px 4px 0;font-size:14.5px;font-weight:600;text-align:center}"
+                + "#msg.ok{color:var(--ok)}#msg.err{color:var(--err)}#msg.busy{color:var(--dim)}"
+                + ".foot{text-align:center;color:var(--dim);font-size:12.5px;margin-top:18px}"
+                + "</style></head><body><main>"
+                + "<div class=brand><b>best<span class=dot></span>seat</b>\u00b7 Tile image</div>"
+                + "<div class=card><h1>" + name + "</h1>"
+                + "<p class=sub>Pick a new picture for this tile. Wide images (16:9) look best.</p>"
+                + "<div class=tile id=tile><img id=pre src='" + "/" + token + "/current' alt=''></div>"
+                + "<div class=cap id=cap>Current tile</div>"
+                + "<div class=label>From your phone</div>"
+                + "<label class=pick id=pick for=f>Choose a picture<small>or drop one here</small></label>"
+                + "<input id=f type=file accept='image/*'>"
+                + "<button class=primary id=up disabled onclick=sendFile()>Use This Picture</button>"
+                + "<div class=label>From the web</div>"
+                + "<input id=u type=url inputmode=url autocomplete=off placeholder='https://…'>"
+                + "<button id=go onclick=sendUrl()>Use Address</button>"
+                + "<div id=msg></div></div>"
+                + "<div class=foot>The page closes when you leave “Change Image” on the TV.</div>"
+                + "</main><script>"
+                + "const $=i=>document.getElementById(i),base=location.pathname;let file=null;"
+                + "function say(t,c){$('msg').textContent=t;$('msg').className=c||''}"
+                + "function preview(src,cap){$('pre').src=src;$('cap').textContent=cap;"
+                + "$('tile').classList.add('new');setTimeout(()=>$('tile').classList.remove('new'),250)}"
+                + "function pickFile(f){if(!f||!f.type.startsWith('image/'))return;file=f;"
+                + "preview(URL.createObjectURL(f),'Preview');$('up').disabled=false;say('')}"
+                + "$('f').onchange=e=>pickFile(e.target.files[0]);"
+                + "const p=$('pick');['dragenter','dragover'].forEach(n=>p.addEventListener(n,e=>{e.preventDefault();p.classList.add('drag')}));"
+                + "['dragleave','drop'].forEach(n=>p.addEventListener(n,e=>{e.preventDefault();p.classList.remove('drag')}));"
+                + "p.addEventListener('drop',e=>pickFile(e.dataTransfer.files[0]));"
+                + "function done(r){return r.text().then(t=>{if(r.ok){say('✓ '+t,'ok');"
+                + "preview(base+'/current?'+Date.now(),'Current tile');$('up').disabled=true;file=null}else say(t,'err')})}"
+                + "function fail(){say('The TV did not answer. Is “Change Image” still open?','err')}"
+                + "function sendFile(){if(!file)return;say('Sending…','busy');"
+                + "fetch(base+'/upload',{method:'POST',body:file}).then(done).catch(fail)}"
+                + "function sendUrl(){const v=$('u').value.trim();if(!v)return;say('Loading…','busy');"
+                + "fetch(base+'/url',{method:'POST',body:/^https?:\\/\\//.test(v)?v:'https://'+v}).then(done).catch(fail)}"
+                + "$('u').addEventListener('keydown',e=>{if(e.key==='Enter')sendUrl()});"
                 + "</script></body></html>";
     }
 
@@ -228,7 +322,10 @@ final class ImageServer {
     }
 
     private static void respond(OutputStream out, int code, String type, String text) throws Exception {
-        byte[] body = text.getBytes(StandardCharsets.UTF_8);
+        respond(out, code, type, text.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private static void respond(OutputStream out, int code, String type, byte[] body) throws Exception {
         String status = code == 200 ? "OK" : code == 404 ? "Not Found" : "Bad Request";
         String head = "HTTP/1.1 " + code + " " + status + "\r\nContent-Type: " + type
                 + "\r\nContent-Length: " + body.length + "\r\nConnection: close\r\nCache-Control: no-store\r\n\r\n";
