@@ -25,6 +25,8 @@ final class VpnGate {
     private static final long WAIT_MS = 120_000;
 
     private static ConnectivityManager.NetworkCallback waiting;
+    /** Offenes Fenster „VPN is off“; die Home-Taste schließt es (auch aus All Apps). */
+    private static java.lang.ref.WeakReference<android.app.Dialog> open;
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
 
     private VpnGate() {}
@@ -51,9 +53,24 @@ final class VpnGate {
         Dialogs.Panel p = Dialogs.alert(a, "VPN is off", "Connect the VPN before " + label + " opens?");
         LinearLayout first = Dialogs.alertButton(a, p, "Connect VPN", () -> connectThenOpen(a, label, launch));
         Dialogs.alertButton(a, p, "Open Without VPN", open);
+        dismissOpen();
+        VpnGate.open = new java.lang.ref.WeakReference<>(p.dialog);
         p.dialog.show();
         first.requestFocus();
         return true;
+    }
+
+    /** Fenster „VPN is off“ schließen, falls offen (Home-Taste). */
+    static void dismissOpen() {
+        android.app.Dialog d = open == null ? null : open.get();
+        open = null;
+        if (d != null && d.isShowing()) {
+            try {
+                d.dismiss();
+            } catch (RuntimeException ignored) {
+                // Fenster schon weg
+            }
+        }
     }
 
     private static void connectThenOpen(Activity a, String label, Intent launch) {

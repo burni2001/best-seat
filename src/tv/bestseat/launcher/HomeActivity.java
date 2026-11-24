@@ -263,6 +263,8 @@ public final class HomeActivity extends Activity
         boolean onHome = visibleSince != 0 && android.os.SystemClock.uptimeMillis() - visibleSince > 500;
         // Doppel-Home erkennt tvQuickActions selbst (schickt dann CONTROL_CENTER), hier kommt nur einfaches Home an.
         if (intent.hasCategory(Intent.CATEGORY_HOME)) {
+            // Home schließt die VPN-Abfrage, egal ob sie hier oder in All Apps offen ist.
+            VpnGate.dismissOpen();
             if (ControlCenterActivity.wasJustOpen()) {
                 // Home bei offenem CC: schließt es animiert, kein Sprung an den Anfang (W104).
                 ControlCenterActivity.closeAnimated(this);
