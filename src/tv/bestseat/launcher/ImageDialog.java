@@ -77,6 +77,13 @@ final class ImageDialog {
         input.setImeOptions(EditorInfo.IME_ACTION_GO);
         input.setPadding(Ui.dp(a, 12), Ui.dp(a, 8), Ui.dp(a, 12), Ui.dp(a, 8));
         input.setBackground(Ui.rounded(Ui.BUTTON, Ui.dp(a, 8)));
+        // Tastatur nicht schon beim Öffnen: Das Feld darf den Fokus haben, die Tastatur kommt erst mit OK.
+        input.setShowSoftInputOnFocus(false);
+        input.setOnClickListener(v -> {
+            android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager)
+                    a.getSystemService(android.content.Context.INPUT_METHOD_SERVICE);
+            if (imm != null) imm.showSoftInput(v, 0);
+        });
         LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
         ip.bottomMargin = Ui.dp(a, 12);
@@ -96,6 +103,9 @@ final class ImageDialog {
             });
         }
         Dialogs.alertButton(a, p, "Cancel", () -> { });
+        if (p.dialog.getWindow() != null) {
+            p.dialog.getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
+        }
         show.accept(p);
         current = new java.lang.ref.WeakReference<>(p.dialog);
         // Eigener Schließen-Hörer nach show(); der Server endet mit dem Fenster.
