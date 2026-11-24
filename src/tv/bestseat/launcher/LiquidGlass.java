@@ -62,7 +62,7 @@ final class LiquidGlass {
      */
     static void sweep(Canvas c, RectF r, float radius, float density, float phase) {
         if (r.width() <= 0 || r.height() <= 0) return;
-        int a = Math.round((Ui.light ? 115 : 105) * (float) Math.sin(Math.PI * Math.max(0f, Math.min(1f, phase))));
+        int a = Math.round((Ui.light ? 80 : 74) * (float) Math.sin(Math.PI * Math.max(0f, Math.min(1f, phase))));
         if (a <= 0) return;
         Path shape = new Path();
         shape.addRoundRect(r, radius, radius, Path.Direction.CW);
