@@ -40,6 +40,8 @@ public final class HomeActivity extends Activity
     static final String ACTION_REFRESH = "tv.bestseat.launcher.REFRESH";
     static final String ACTION_EXPORT_BANNERS = "tv.bestseat.launcher.EXPORT_BANNERS";
     static final String ACTION_HIDDEN = "tv.bestseat.launcher.SHOW_HIDDEN";
+    /** Einrichtungsassistent erneut zeigen (Einstellungen, W124). */
+    static final String ACTION_SETUP = "tv.bestseat.launcher.SETUP";
 
     /** Rand links/rechts wie tvOS (90 px). */
     static final int SIDE_DP = 45;
@@ -80,6 +82,8 @@ public final class HomeActivity extends Activity
     private boolean builtFavorites;
     private String builtTiles = "";
     private boolean pendingHidden;
+    private boolean pendingSetup;
+    private boolean setupChecked;
     private int builtStoreVersion;
     private boolean builtLight;
     private int builtFont;
@@ -108,6 +112,7 @@ public final class HomeActivity extends Activity
         builtLight = Ui.apply(this);
         builtFont = Prefs.font(this);
         pendingHidden = ACTION_HIDDEN.equals(getIntent().getAction());
+        pendingSetup = ACTION_SETUP.equals(getIntent().getAction());
         store = LayoutStore.get(this);
         buildUi();
 
@@ -261,6 +266,10 @@ public final class HomeActivity extends Activity
         }
         if (ACTION_EXPORT_BANNERS.equals(intent.getAction())) {
             banners.export(allTiles, worker);
+            return;
+        }
+        if (ACTION_SETUP.equals(intent.getAction())) {
+            SetupWizard.start(this);
             return;
         }
         if (ACTION_HIDDEN.equals(intent.getAction())) {
@@ -671,6 +680,15 @@ public final class HomeActivity extends Activity
         if (pendingHidden) {
             pendingHidden = false;
             handler.post(this::hiddenApps);
+        }
+        // Erster Start einer frischen Installation oder aus den Einstellungen: Assistent (W124).
+        if (pendingSetup) {
+            pendingSetup = false;
+            setupChecked = true;
+            handler.postDelayed(() -> SetupWizard.start(this), 600);
+        } else if (!setupChecked) {
+            setupChecked = true;
+            handler.postDelayed(() -> SetupWizard.maybeShow(this), 600);
         }
     }
 

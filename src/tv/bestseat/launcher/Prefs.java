@@ -8,6 +8,7 @@ public final class Prefs {
 
     // Schlüssel in der Datei „settings“ (auch im Layout-Backup enthalten, deshalb nie umbenennen).
     private static final String K_APPEARANCE = "appearance";
+    private static final String K_SETUP_DONE = "setup_done";
     private static final String K_BACKGROUND = "background";
     private static final String K_BLUR_ALL = "blur_all";
     private static final String K_CLOCK_ZONE = "clock_zone";
@@ -376,5 +377,14 @@ public final class Prefs {
 
     private static String e(int codePoint) {
         return new String(Character.toChars(codePoint));
+    }
+
+    /** Einrichtungsassistent schon gezeigt (W124). */
+    static boolean setupDone(Context c) {
+        return getBool(c, K_SETUP_DONE, false);
+    }
+
+    static void setSetupDone(Context c, boolean value) {
+        put(c, K_SETUP_DONE, value);
     }
 }

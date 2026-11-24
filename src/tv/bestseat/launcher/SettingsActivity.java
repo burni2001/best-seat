@@ -258,6 +258,9 @@ public final class SettingsActivity extends Activity {
         externalSettings();
         section("General");
         group(PAGE_BACKUP, "Backup", "Save or restore tiles, folders and settings.");
+        row("Setup Assistant", null, "Run the first-start setup again.")
+                .setOnClickListener(v -> startActivity(new Intent(HomeActivity.ACTION_SETUP)
+                        .setClass(this, HomeActivity.class)));
         row("About", null, "See the version and credits.").setOnClickListener(v -> Dialogs.about(this));
     }
 
