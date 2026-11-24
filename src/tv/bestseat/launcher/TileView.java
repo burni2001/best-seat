@@ -110,9 +110,28 @@ final class TileView extends FrameLayout {
         return d;
     }
 
+    /** Pulsieren der grauen Stick-Kacheln, solange der Stick fehlt (W130). */
+    private android.animation.ValueAnimator pulse;
+    private final Runnable stopPulse = this::stopPulse;
+
     void updateAvailability() {
         // Fehlende USB-Apps: kein Symbol, dafür blass und grau (Wunsch des Nutzers).
-        setAlpha(tile.available ? 1f : 0.32f);
+        stopPulse();
+        setAlpha(tile.available ? 1f : GHOST_ALPHA);
+        if (!tile.available) {
+            // Kurz nach dem Erscheinen der Startseite pulsieren sie langsam: man sieht, dass noch etwas kommt.
+            long left = HomeActivity.ghostPulseLeft();
+            if (left > 0 && !Prefs.reduceMotion(getContext())) {
+                pulse = android.animation.ValueAnimator.ofFloat(GHOST_ALPHA, 0.62f);
+                pulse.setDuration(Ui.ms(900));
+                pulse.setRepeatMode(android.animation.ValueAnimator.REVERSE);
+                pulse.setRepeatCount(android.animation.ValueAnimator.INFINITE);
+                pulse.setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator());
+                pulse.addUpdateListener(a -> setAlpha((float) a.getAnimatedValue()));
+                pulse.start();
+                postDelayed(stopPulse, left);
+            }
+        }
         if (tile.available) {
             setLayerType(LAYER_TYPE_NONE, null);
         } else {
@@ -121,6 +140,26 @@ final class TileView extends FrameLayout {
             android.graphics.Paint grey = new android.graphics.Paint();
             grey.setColorFilter(new android.graphics.ColorMatrixColorFilter(cm));
             setLayerType(LAYER_TYPE_HARDWARE, grey);
+        }
+    }
+
+    private static final float GHOST_ALPHA = 0.32f;
+
+    private void stopPulse() {
+        removeCallbacks(stopPulse);
+        if (pulse == null) return;
+        pulse.cancel();
+        pulse = null;
+        if (!tile.available) setAlpha(GHOST_ALPHA);
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        removeCallbacks(stopPulse);
+        if (pulse != null) {
+            pulse.cancel();
+            pulse = null;
         }
     }
 

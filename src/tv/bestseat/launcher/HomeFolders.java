@@ -40,8 +40,7 @@ final class HomeFolders {
     void open(String folderKey) {
         LayoutStore.Folder f = home.store.folders.get(folderKey);
         if (f == null) return;
-        java.util.Map<String, Tile> byKey = new java.util.HashMap<>();
-        for (Tile t : home.allTiles) byKey.put(t.key, t);
+        movingKey = null;
         // Kompakt wie tvOS: 3 Kacheln nebeneinander, Kasten fest für 3×3 (W33, Sammelmeldung 10).
         int cols = 3;
         int tileDp = 116;
@@ -53,11 +52,34 @@ final class HomeFolders {
             if (tv.tile.key.equals(folderKey)) origin = tv;
         }
         Dialogs.Panel p = Dialogs.folderPanel(home, f.name, boxDp, 3 * rowDp + 12, snapshot(), origin);
+        p.keyHook = (d, code, ev) -> moveKey(p, folderKey, code, ev);
+        View first = fill(p, folderKey, null);
+        home.show(p);
+        if (first != null) first.requestFocus();
+    }
+
+    // Verschieben im Ordner (W131): App wackelt, Pfeile tauschen, OK oder Zurück beendet.
+    private String movingKey;
+    private final List<TileView> folderViews = new ArrayList<>();
+    private static final int COLS = 3;
+
+    /** Kacheln des Ordners (neu) einsetzen; liefert die Kachel für den Fokus. */
+    private View fill(Dialogs.Panel p, String folderKey, String focusKey) {
+        LayoutStore.Folder f = home.store.folders.get(folderKey);
+        p.content.removeAllViews();
+        folderViews.clear();
+        if (f == null) return null;
+        java.util.Map<String, Tile> byKey = new java.util.HashMap<>();
+        for (Tile t : home.allTiles) byKey.put(t.key, t);
+        int cols = COLS;
+        int tileDp = 116;
+        int gapDp = 24;
         int gap = Ui.dp(home, gapDp);
         int w = Ui.dp(home, tileDp);
         int h = Math.round(w * 3f / 5f);
         LinearLayout row = null;
         View first = null;
+        View focus = null;
         int i = 0;
         for (String k : f.keys) {
             Tile t = byKey.get(k);
@@ -93,22 +115,74 @@ final class HomeFolders {
                 label.setSelected(has);
             });
             tv.setOnClickListener(v -> {
+                if (movingKey != null) return;
                 home.zoom.capture(tv);
                 p.dialog.dismiss();
                 home.open(t);
             });
             tv.setOnLongClickListener(v -> {
-                appMenu(p, t);
+                if (movingKey == null) appMenu(p, folderKey, t);
                 return true;
             });
             LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(w, ViewGroup.LayoutParams.WRAP_CONTENT);
             if (i % cols != 0) cp.leftMargin = gap;
             row.addView(cell, cp);
+            folderViews.add(tv);
+            tv.setWiggle(t.key.equals(movingKey));
             if (first == null) first = tv;
+            if (t.key.equals(focusKey)) focus = tv;
             i++;
         }
-        home.show(p);
-        if (first != null) first.requestFocus();
+        return focus != null ? focus : first;
+    }
+
+    private void startMoving(Dialogs.Panel p, String folderKey, String key) {
+        movingKey = key;
+        for (TileView tv : folderViews) {
+            tv.setWiggle(tv.tile.key.equals(key));
+            if (tv.tile.key.equals(key)) tv.requestFocus();
+        }
+        android.widget.Toast.makeText(home, "Use the arrows to move, OK to finish",
+                android.widget.Toast.LENGTH_SHORT).show();
+    }
+
+    private boolean moveKey(Dialogs.Panel p, String folderKey, int code, android.view.KeyEvent ev) {
+        if (movingKey == null) return false;
+        boolean down = ev.getAction() == android.view.KeyEvent.ACTION_DOWN;
+        int delta = 0;
+        switch (code) {
+            case android.view.KeyEvent.KEYCODE_DPAD_LEFT: delta = -1; break;
+            case android.view.KeyEvent.KEYCODE_DPAD_RIGHT: delta = 1; break;
+            case android.view.KeyEvent.KEYCODE_DPAD_UP: delta = -COLS; break;
+            case android.view.KeyEvent.KEYCODE_DPAD_DOWN: delta = COLS; break;
+            case android.view.KeyEvent.KEYCODE_DPAD_CENTER:
+            case android.view.KeyEvent.KEYCODE_ENTER:
+            case android.view.KeyEvent.KEYCODE_BACK:
+                if (!down) {
+                    String key = movingKey;
+                    movingKey = null;
+                    for (TileView tv : folderViews) tv.setWiggle(false);
+                    home.store.save();
+                    home.focusedKey = folderKey;
+                    for (TileView tv : folderViews) if (tv.tile.key.equals(key)) tv.requestFocus();
+                }
+                return true;
+            default:
+                return false;
+        }
+        if (!down) return true;
+        List<String> keys = new ArrayList<>();
+        for (TileView tv : folderViews) keys.add(tv.tile.key);
+        int from = keys.indexOf(movingKey);
+        if (from < 0) return true;
+        int to = Math.max(0, Math.min(keys.size() - 1, from + delta));
+        if (to == from) return true;
+        keys.remove(from);
+        keys.add(to, movingKey);
+        home.store.reorderFolder(folderKey, keys);
+        View focus = fill(p, folderKey, movingKey);
+        if (focus != null) focus.requestFocus();
+        return true;
     }
 
     /** Verkleinertes Bild der Startseite als Hintergrund für den geöffneten Ordner. */
@@ -130,9 +204,10 @@ final class HomeFolders {
     }
 
     /** Langes OK auf einer App im Ordner. */
-    private void appMenu(Dialogs.Panel folderPanel, Tile tile) {
+    private void appMenu(Dialogs.Panel folderPanel, String folderKey, Tile tile) {
         Dialogs.Panel p = Dialogs.menu(home, null).anchor(folderPanel.dialog.getCurrentFocus());
-        LinearLayout first = Dialogs.actionRow(home, p, "Remove from Folder", () -> {
+        LinearLayout first = Dialogs.actionRow(home, p, "Edit Folder", () -> startMoving(folderPanel, folderKey, tile.key));
+        Dialogs.actionRow(home, p, "Remove from Folder", () -> {
             folderPanel.dialog.dismiss();
             home.store.removeFromFolder(tile.key);
             home.focusedKey = tile.key;
@@ -152,7 +227,7 @@ final class HomeFolders {
         if (tile.kind == Tile.APP && tile.pkg != null && tile.available) {
             Dialogs.actionRow(home, p, "App Info", () -> home.openAppInfo(tile.pkg));
         }
-        p.dialog.show();
+        home.showChild(p);
         first.requestFocus();
     }
 

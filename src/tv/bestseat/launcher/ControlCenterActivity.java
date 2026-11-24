@@ -252,7 +252,10 @@ public final class ControlCenterActivity extends Activity {
         root.postOnAnimation(() -> root.postOnAnimation(() -> {
             setHomePillHidden(true);
             pill.setBare(false);
-            root.postOnAnimation(pill::growControls);
+            root.postOnAnimation(() -> {
+                pill.growControls();
+                if (!overApp()) HomeActivity.shiftVpn(-pill.controlsExtraPx(), Ui.ms(420), true);
+            });
         }));
         dim.animate().alpha(1f).setDuration(Ui.ms(300)).start();
     };
@@ -403,6 +406,7 @@ public final class ControlCenterActivity extends Activity {
         fadeOut.setDuration(reduceMotion ? d : d / 3);
         fadeOut.start();
         pill.shrinkControls(d);
+        if (!overApp()) HomeActivity.shiftVpn(0f, d, false);
         // Über einer App gibt es keine Pille der Startseite, in die diese zurückkehrt: ausblenden.
         if (overApp()) pill.animate().alpha(0f).setDuration(d).start();
         dim.animate().alpha(0f).setDuration(d).withEndAction(() -> {

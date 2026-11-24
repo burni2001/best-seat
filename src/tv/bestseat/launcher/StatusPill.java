@@ -176,6 +176,11 @@ final class StatusPill extends LinearLayout {
         controls.setAlpha(0f);
     }
 
+    /** Um so viel wird die Pille beim Öffnen des Kontrollzentrums nach links breiter. */
+    int controlsExtraPx() {
+        return dp(BUTTON_DP) + dp(6);
+    }
+
     /** Kontrollzentrum öffnet: Schalter-Symbol wächst von 0 auf volle Breite, die Pille dehnt sich nach links. */
     void growControls() {
         if (controls == null) return;

@@ -222,6 +222,20 @@ final class LayoutStore {
         return null;
     }
 
+    /** Neue Reihenfolge der sichtbaren Apps im Ordner; ausgeblendete behalten ihre Plätze (W131). */
+    synchronized void reorderFolder(String folderKey, List<String> visible) {
+        Folder folder = folders.get(folderKey);
+        if (folder == null) return;
+        Set<String> set = new HashSet<>(visible);
+        int next = 0;
+        for (int i = 0; i < folder.keys.size(); i++) {
+            if (set.contains(folder.keys.get(i)) && next < visible.size()) {
+                folder.keys.set(i, visible.get(next++));
+            }
+        }
+        version++;
+    }
+
     /** Neuer Ordner an der Stelle der ersten Kachel; die Kachel wandert hinein. */
     synchronized String createFolder(String name, String firstKey) {
         int n = 1;

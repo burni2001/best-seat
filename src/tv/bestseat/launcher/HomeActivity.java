@@ -87,6 +87,8 @@ public final class HomeActivity extends Activity
     /** Sichtbar seit (uptime), 0 = gestoppt. Für „Home auf der Startseite“: Android pausiert vor onNewIntent. */
     long visibleSince;
     private Dialog openDialog;
+    /** Menü über dem offenen Fenster (z. B. Kontextmenü einer App im Ordner); schließt mit ihm (B54). */
+    private Dialog childDialog;
 
 
     private long lastInput = SystemClock.elapsedRealtime();
@@ -146,6 +148,21 @@ public final class HomeActivity extends Activity
         if (h != null && h.statusPill != null) {
             h.statusPill.setVisibility(hidden ? View.INVISIBLE : View.VISIBLE);
         }
+        if (!hidden && h != null && h.vpnPill != null && h.vpnPill.getTranslationX() != 0f) {
+            h.vpnPill.animate().translationX(0f).setDuration(Ui.ms(200)).start();
+        }
+    }
+
+    /**
+     * Vom Kontrollzentrum: Dessen Pille wird nach links breiter und würde die VPN-Anzeige verdecken.
+     * Die VPN-Anzeige rückt im selben Takt mit (W129); grow = öffnen, sonst schließen.
+     */
+    static void shiftVpn(float px, long duration, boolean grow) {
+        HomeActivity h = current == null ? null : current.get();
+        if (h == null || h.vpnPill == null) return;
+        h.vpnPill.animate().translationX(px).setDuration(duration)
+                .setInterpolator(grow ? new android.view.animation.DecelerateInterpolator(2f)
+                        : new android.view.animation.AccelerateInterpolator(1.5f)).start();
     }
 
     @Override
@@ -185,10 +202,26 @@ public final class HomeActivity extends Activity
         stopMoving(true);
     }
 
+    /** Graue Stick-Kacheln pulsieren bis dahin (uptime), also kurz nach dem Erscheinen der Startseite (W130). */
+    private static long ghostPulseUntil;
+    private static final long GHOST_PULSE_MS = 90_000;
+
+    static long ghostPulseLeft() {
+        return ghostPulseUntil - android.os.SystemClock.uptimeMillis();
+    }
+
+    private void refreshGhosts() {
+        for (TileView tv : tileViews) {
+            if (!tv.tile.available) tv.updateAvailability();
+        }
+    }
+
     @Override
     protected void onStart() {
         super.onStart();
         visibleSince = android.os.SystemClock.uptimeMillis();
+        ghostPulseUntil = visibleSince + GHOST_PULSE_MS;
+        refreshGhosts();
         visibleHome = new java.lang.ref.WeakReference<>(this);
         zoom.remove(false);
         zoom.maybeZoomBack();
@@ -198,6 +231,8 @@ public final class HomeActivity extends Activity
     protected void onStop() {
         super.onStop();
         visibleSince = 0;
+        ghostPulseUntil = 0;
+        refreshGhosts();
         if (visibleHome != null && visibleHome.get() == this) visibleHome = null;
     }
 
@@ -964,6 +999,20 @@ public final class HomeActivity extends Activity
         openDialog = p.dialog;
         p.dialog.setOnDismissListener(d -> {
             if (openDialog == p.dialog) openDialog = null;
+            if (childDialog != null) {
+                childDialog.dismiss();
+                childDialog = null;
+            }
+        });
+        p.dialog.show();
+    }
+
+    /** Menü über dem offenen Fenster zeigen; es geht mit dem Fenster zu. */
+    void showChild(Dialogs.Panel p) {
+        if (childDialog != null) childDialog.dismiss();
+        childDialog = p.dialog;
+        p.dialog.setOnDismissListener(d -> {
+            if (childDialog == p.dialog) childDialog = null;
         });
         p.dialog.show();
     }

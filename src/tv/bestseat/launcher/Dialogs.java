@@ -25,6 +25,8 @@ final class Dialogs {
         final Dialog dialog;
         final LinearLayout content;
         View box;
+        /** Tasten zuerst hierher (z. B. Verschieben im Ordner); true = verbraucht. */
+        android.content.DialogInterface.OnKeyListener keyHook;
 
         Panel(Dialog dialog, LinearLayout content) {
             this.dialog = dialog;
@@ -254,7 +256,9 @@ final class Dialogs {
         // Schließen mit Zurück: genau umgekehrt (Wunsch des Nutzers). Kasten schrumpft in die
         // Ordnerkachel zurück und blendet aus, Hintergrund blendet zum Schluss mit aus.
         final boolean[] closing = {false};
+        final Panel result = new Panel(dialog, content);
         dialog.setOnKeyListener((d, code, ev) -> {
+            if (result.keyHook != null && result.keyHook.onKey(d, code, ev)) return true;
             if (code != android.view.KeyEvent.KEYCODE_BACK) return false;
             if (ev.getAction() != android.view.KeyEvent.ACTION_UP || closing[0]) return true;
             closing[0] = true;
@@ -274,7 +278,7 @@ final class Dialogs {
             shade.animate().alpha(0f).setStartDelay(dur - fade).setDuration(fade).start();
             return true;
         });
-        return new Panel(dialog, content);
+        return result;
     }
 
     /** tvOS-Hinweisfenster: 504 px breit, Radius 48, Titel Bold 31, Text Medium 25, Knöpfe 440×66. */
