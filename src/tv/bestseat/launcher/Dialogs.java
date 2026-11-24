@@ -191,7 +191,8 @@ final class Dialogs {
         box.setOrientation(LinearLayout.VERTICAL);
         int p = Ui.dp(activity, 18);
         // tvOS: Kasten schwarz 45 % (hell #FEFDFF 50 %), Radius 60 px.
-        box.setBackground(Ui.roundedGlass(Ui.light ? Color.argb(128, 254, 253, 255) : Color.argb(115, 0, 0, 0),
+        int boxA = LiquidGlass.on ? (Ui.light ? 95 : 85) : (Ui.light ? 128 : 115);
+        box.setBackground(Ui.roundedGlass(Ui.light ? Color.argb(boxA, 254, 253, 255) : Color.argb(boxA, 0, 0, 0),
                 Ui.dp(activity, 30), 1f));
         box.setOutlineProvider(new RoundedOutline(Ui.dp(activity, 30)));
         box.setClipToOutline(true);

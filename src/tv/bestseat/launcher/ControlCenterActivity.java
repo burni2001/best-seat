@@ -93,11 +93,14 @@ public final class ControlCenterActivity extends Activity {
         panel.setOrientation(LinearLayout.VERTICAL);
         int pad = Ui.dp(this, 6);
         // Unten weniger: Die letzte Reihe bringt ihren Abstand (GAP_DP) schon mit, zusammen 11,75 dp wie oben.
-        panel.setPadding(pad, pad, pad, Ui.dp(this, 3.5f));
+        // Abstand liegt in der Liste (body), nicht im Kasten: So reicht die Liste bis an den Rand und die
+        // Schatten der Kacheln werden nicht 6 dp hinter den Kacheln abgeschnitten.
+        panel.setPadding(0, 0, 0, 0);
         if (blurred != null && Prefs.blurEnabled(this)) {
             // Milchglas: nur was hinter dem Kasten liegt, weichgezeichnet (W102).
             panel.setBackground(new GlassDrawable(blurred, panel, Ui.dp(this, PANEL_RADIUS_DP),
-                    Ui.light ? Color.argb(150, 238, 240, 244) : Color.argb(120, 28, 30, 36),
+                    Ui.light ? Color.argb(LiquidGlass.on ? 95 : 150, 238, 240, 244)
+                            : Color.argb(LiquidGlass.on ? 70 : 120, 28, 30, 36),
                     Ui.MATERIAL_STROKE, Math.max(1, Ui.dp(this, 0.5f))));
         } else {
             // tvOS-Material: dunkle Glasfläche mit feinem hellem Rand.
@@ -108,7 +111,7 @@ public final class ControlCenterActivity extends Activity {
         panel.setElevation(Ui.dp(this, 30));
         // Children stay inside their own bounds, so the scrolling list never covers clock and date (B10)
         panel.setClipChildren(true);
-        panel.setClipToPadding(true);
+        panel.setClipToPadding(false);
 
         // Uhrzeit und Profilbild stehen jetzt in der Pille oben rechts (StatusPill), nicht mehr im Kasten.
         shown = new java.lang.ref.WeakReference<>(this);
@@ -126,7 +129,7 @@ public final class ControlCenterActivity extends Activity {
         body.setOrientation(LinearLayout.VERTICAL);
         body.setClipChildren(false);
         body.setClipToPadding(false);
-        body.setPadding(Ui.dp(this, 6), Ui.dp(this, 6), Ui.dp(this, 6), 0);
+        body.setPadding(pad + Ui.dp(this, 6), pad + Ui.dp(this, 6), pad + Ui.dp(this, 6), Ui.dp(this, 3.5f));
         scroll.addView(body);
         // Höhe nach Inhalt; passt er nicht, begrenzt der Kasten ihn auf den Bildschirm und die Liste scrollt.
         panel.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
