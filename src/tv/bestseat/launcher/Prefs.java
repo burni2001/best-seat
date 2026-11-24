@@ -4,7 +4,32 @@ import android.content.Context;
 import android.content.SharedPreferences;
 
 /** Einstellungen der Oberfläche. */
-final class Prefs {
+public final class Prefs {
+
+    // Schlüssel in der Datei „settings“ (auch im Layout-Backup enthalten, deshalb nie umbenennen).
+    private static final String K_APPEARANCE = "appearance";
+    private static final String K_BACKGROUND = "background";
+    private static final String K_BLUR_ALL = "blur_all";
+    private static final String K_CLOCK_ZONE = "clock_zone";
+    private static final String K_COLUMNS = "columns";
+    private static final String K_FAVORITES = "favorites";
+    private static final String K_FONT = "font";
+    private static final String K_HIDE_USB_NOTICE = "hide_usb_notice";
+    private static final String K_NON_TV_APPS = "non_tv_apps";
+    private static final String K_REDUCE_MOTION = "reduce_motion";
+    private static final String K_SAVER_CLOCK = "saver_clock";
+    private static final String K_SAVER_DELAY = "saver_delay";
+    private static final String K_SAVER_LOCATION = "saver_location";
+    private static final String K_SAVER_SOURCE = "saver_source";
+    private static final String K_SAVER_TOPIC = "saver_topic";
+    private static final String K_SHINE = "shine";
+    private static final String K_SHINE_SHELF = "shine_shelf";
+    private static final String K_SHOW_CLOCK = "show_clock";
+    private static final String K_SHOW_VPN = "show_vpn";
+    private static final String K_TILE_HIDDEN = "tile_hidden";
+    private static final String K_TILE_SETTINGS = "tile_settings";
+    private static final String K_CC_ORDER = "cc_order";
+    private static final String K_CC_HIDDEN = "cc_hidden";
 
     static final int[] COLUMN_CHOICES = {5, 6, 7, 8};
 
@@ -17,99 +42,120 @@ final class Prefs {
 
     private Prefs() {}
 
-    private static SharedPreferences sp(Context c) {
+    /** Datei der Einstellungen; Profile und App Switcher legen ihre Werte mit hinein. */
+    public static SharedPreferences settings(Context c) {
         return c.getSharedPreferences("settings", Context.MODE_PRIVATE);
     }
 
+    private static SharedPreferences sp(Context c) {
+        return settings(c);
+    }
+
+    private static int getInt(Context c, String key, int def) {
+        return sp(c).getInt(key, def);
+    }
+
+    private static boolean getBool(Context c, String key, boolean def) {
+        return sp(c).getBoolean(key, def);
+    }
+
+    private static void put(Context c, String key, int value) {
+        sp(c).edit().putInt(key, value).apply();
+    }
+
+    private static void put(Context c, String key, boolean value) {
+        sp(c).edit().putBoolean(key, value).apply();
+    }
+
     static int columns(Context c) {
-        return sp(c).getInt("columns", 6);
+        return getInt(c, K_COLUMNS, 6);
     }
 
     static void setColumns(Context c, int value) {
-        sp(c).edit().putInt("columns", value).apply();
+        put(c, K_COLUMNS, value);
     }
 
     static boolean nonTvApps(Context c) {
-        return sp(c).getBoolean("non_tv_apps", false);
+        return getBool(c, K_NON_TV_APPS, false);
     }
 
     static void setNonTvApps(Context c, boolean value) {
-        sp(c).edit().putBoolean("non_tv_apps", value).apply();
+        put(c, K_NON_TV_APPS, value);
     }
 
     static boolean showVpn(Context c) {
-        return sp(c).getBoolean("show_vpn", true);
+        return getBool(c, K_SHOW_VPN, true);
     }
 
     static void setShowVpn(Context c, boolean value) {
-        sp(c).edit().putBoolean("show_vpn", value).apply();
+        put(c, K_SHOW_VPN, value);
     }
 
     static int saverSource(Context c) {
-        return sp(c).getInt("saver_source", SAVER_AERIALS);
+        return getInt(c, K_SAVER_SOURCE, SAVER_AERIALS);
     }
 
     static void setSaverSource(Context c, int value) {
-        sp(c).edit().putInt("saver_source", value).apply();
+        put(c, K_SAVER_SOURCE, value);
     }
 
     static int saverTopic(Context c) {
-        return sp(c).getInt("saver_topic", 0);
+        return getInt(c, K_SAVER_TOPIC, 0);
     }
 
     static void setSaverTopic(Context c, int value) {
-        sp(c).edit().putInt("saver_topic", value).apply();
+        put(c, K_SAVER_TOPIC, value);
     }
 
     static int saverDelay(Context c) {
-        return sp(c).getInt("saver_delay", 5);
+        return getInt(c, K_SAVER_DELAY, 5);
     }
 
     static void setSaverDelay(Context c, int value) {
-        sp(c).edit().putInt("saver_delay", value).apply();
+        put(c, K_SAVER_DELAY, value);
     }
 
     static boolean saverClock(Context c) {
-        return sp(c).getBoolean("saver_clock", true);
+        return getBool(c, K_SAVER_CLOCK, true);
     }
 
     static void setSaverClock(Context c, boolean value) {
-        sp(c).edit().putBoolean("saver_clock", value).apply();
+        put(c, K_SAVER_CLOCK, value);
     }
 
     static boolean saverLocation(Context c) {
-        return sp(c).getBoolean("saver_location", true);
+        return getBool(c, K_SAVER_LOCATION, true);
     }
 
     static void setSaverLocation(Context c, boolean value) {
-        sp(c).edit().putBoolean("saver_location", value).apply();
+        put(c, K_SAVER_LOCATION, value);
     }
 
     /** Lichtstreifen über der fokussierten Kachel/Karte. */
     static boolean shine(Context c) {
-        return sp(c).getBoolean("shine", true);
+        return getBool(c, K_SHINE, true);
     }
 
     /** Bewegung reduzieren (W83): Ein- und Auszoomen von Apps, Ordnern und Kontrollzentrum nur als Überblendung. */
     static boolean reduceMotion(Context c) {
-        return sp(c).getBoolean("reduce_motion", false);
+        return getBool(c, K_REDUCE_MOTION, false);
     }
 
     static void setReduceMotion(Context c, boolean value) {
-        sp(c).edit().putBoolean("reduce_motion", value).apply();
+        put(c, K_REDUCE_MOTION, value);
     }
 
     static void setShine(Context c, boolean value) {
-        sp(c).edit().putBoolean("shine", value).apply();
+        put(c, K_SHINE, value);
     }
 
     /** Oberste Reihe als Favoriten-Leiste; nur sie füllt den Top Shelf (W14/W17). */
     static boolean favorites(Context c) {
-        return sp(c).getBoolean("favorites", true);
+        return getBool(c, K_FAVORITES, true);
     }
 
     static void setFavorites(Context c, boolean value) {
-        sp(c).edit().putBoolean("favorites", value).apply();
+        put(c, K_FAVORITES, value);
     }
 
     static final int BG_MATCHING = 0;
@@ -119,54 +165,54 @@ final class Prefs {
 
     /** Hintergrund der ganzen Startseite: passende Farbe, unscharfer oder scharfer Inhalt. */
     static int background(Context c) {
-        return Math.max(0, Math.min(BACKGROUND_NAMES.length - 1, sp(c).getInt("background", BG_BLURRED)));
+        return Math.max(0, Math.min(BACKGROUND_NAMES.length - 1, getInt(c, K_BACKGROUND, BG_BLURRED)));
     }
 
     static void setBackground(Context c, int value) {
-        sp(c).edit().putInt("background", value).apply();
+        put(c, K_BACKGROUND, value);
     }
 
     /** Ein Schalter für alle Weichzeichner-Effekte (Hintergrund, Ordner, Fenster, App Switcher). */
-    static boolean blurEnabled(Context c) {
-        return sp(c).getBoolean("blur_all", true);
+    public static boolean blurEnabled(Context c) {
+        return getBool(c, K_BLUR_ALL, true);
     }
 
     static void setBlurEnabled(Context c, boolean value) {
-        sp(c).edit().putBoolean("blur_all", value).apply();
+        put(c, K_BLUR_ALL, value);
     }
 
     /** Vollbild „USB-Speicher fehlt“ nach dem Aufwachen automatisch schließen (braucht adb-Freigabe). */
     static boolean hideUsbNotice(Context c) {
-        return sp(c).getBoolean("hide_usb_notice", true);
+        return getBool(c, K_HIDE_USB_NOTICE, true);
     }
 
     static void setHideUsbNotice(Context c, boolean value) {
-        sp(c).edit().putBoolean("hide_usb_notice", value).apply();
+        put(c, K_HIDE_USB_NOTICE, value);
     }
 
     /** Uhrzeit in der Pille der Startseite (aus = nur das Profilbild). */
     static boolean showClock(Context c) {
-        return sp(c).getBoolean("show_clock", true);
+        return getBool(c, K_SHOW_CLOCK, true);
     }
 
     static void setShowClock(Context c, boolean value) {
-        sp(c).edit().putBoolean("show_clock", value).apply();
+        put(c, K_SHOW_CLOCK, value);
     }
 
     /** Lichtstreifen über der fokussierten Top-Shelf-Karte (W13). */
     static boolean shineShelf(Context c) {
-        return sp(c).getBoolean("shine_shelf", true);
+        return getBool(c, K_SHINE_SHELF, true);
     }
 
     static void setShineShelf(Context c, boolean value) {
-        sp(c).edit().putBoolean("shine_shelf", value).apply();
+        put(c, K_SHINE_SHELF, value);
     }
 
     /** Reihenfolge der Kontrollzentrum-Kacheln; fehlende IDs hinten anhängen, unbekannte weglassen. */
     static java.util.List<String> controlOrder(Context c) {
         java.util.List<String> out = new java.util.ArrayList<>();
         java.util.List<String> known = java.util.Arrays.asList(ControlItems.IDS);
-        for (String id : ccGet(c, "cc_order").split(",")) {
+        for (String id : ccGet(c, K_CC_ORDER).split(",")) {
             if (known.contains(id) && !out.contains(id)) out.add(id);
         }
         for (String id : ControlItems.IDS) {
@@ -176,19 +222,19 @@ final class Prefs {
     }
 
     static void setControlOrder(Context c, java.util.List<String> order) {
-        sp(c).edit().putString(ccKey(c, "cc_order"), String.join(",", order)).apply();
+        sp(c).edit().putString(ccKey(c, K_CC_ORDER), String.join(",", order)).apply();
     }
 
     static java.util.Set<String> controlHidden(Context c) {
         java.util.Set<String> out = new java.util.HashSet<>();
-        for (String id : ccGet(c, "cc_hidden").split(",")) {
+        for (String id : ccGet(c, K_CC_HIDDEN).split(",")) {
             if (!id.isEmpty()) out.add(id);
         }
         return out;
     }
 
     static void setControlHidden(Context c, java.util.Set<String> hidden) {
-        sp(c).edit().putString(ccKey(c, "cc_hidden"), String.join(",", hidden)).apply();
+        sp(c).edit().putString(ccKey(c, K_CC_HIDDEN), String.join(",", hidden)).apply();
     }
 
     /** Kontrollzentrum je Profil (W): p0 behält die alten Schlüssel, andere Profile hängen ihre id an. */
@@ -205,25 +251,25 @@ final class Prefs {
 
     static void resetControl(Context c) {
         // Leerer Wert statt Entfernen: sonst übernähme ein weiteres Profil wieder die Kacheln des ersten.
-        sp(c).edit().putString(ccKey(c, "cc_order"), "").putString(ccKey(c, "cc_hidden"), "").apply();
+        sp(c).edit().putString(ccKey(c, K_CC_ORDER), "").putString(ccKey(c, K_CC_HIDDEN), "").apply();
     }
 
     // ---- W22: eingebaute Kacheln am Ende der Startseite
 
     static boolean settingsTile(Context c) {
-        return sp(c).getBoolean("tile_settings", true);
+        return getBool(c, K_TILE_SETTINGS, true);
     }
 
     static void setSettingsTile(Context c, boolean value) {
-        sp(c).edit().putBoolean("tile_settings", value).apply();
+        put(c, K_TILE_SETTINGS, value);
     }
 
     static boolean hiddenTile(Context c) {
-        return sp(c).getBoolean("tile_hidden", true);
+        return getBool(c, K_TILE_HIDDEN, true);
     }
 
     static void setHiddenTile(Context c, boolean value) {
-        sp(c).edit().putBoolean("tile_hidden", value).apply();
+        put(c, K_TILE_HIDDEN, value);
     }
 
     // ---- W23: Zeitzone der eigenen Uhren (der TV läuft auf UTC)
@@ -232,12 +278,12 @@ final class Prefs {
     static final String[] ZONE_NAMES = {"Germany", "TV time"};
 
     static int clockZone(Context c) {
-        int i = sp(c).getInt("clock_zone", 0);
+        int i = getInt(c, K_CLOCK_ZONE, 0);
         return i >= 0 && i < ZONE_IDS.length ? i : 0;
     }
 
     static void setClockZone(Context c, int index) {
-        sp(c).edit().putInt("clock_zone", index).apply();
+        put(c, K_CLOCK_ZONE, index);
     }
 
     /** Uhr auf die gewählte Zeitzone stellen; leer = Zeitzone des TVs. */
@@ -251,12 +297,12 @@ final class Prefs {
     static final String[] APPEARANCE_NAMES = {"Dark", "Light", "Automatic"};
 
     static int appearance(Context c) {
-        int i = sp(c).getInt("appearance", 0);
+        int i = getInt(c, K_APPEARANCE, 0);
         return i >= 0 && i < APPEARANCE_NAMES.length ? i : 0;
     }
 
     static void setAppearance(Context c, int index) {
-        sp(c).edit().putInt("appearance", index).apply();
+        put(c, K_APPEARANCE, index);
     }
 
     /** Hell bei „Light“, bei „Automatic“ von 7 bis 19 Uhr (Zeitzone wie die Uhren). */
@@ -273,12 +319,12 @@ final class Prefs {
     // ---- Schrift (W115): Roboto oder eine mitgelieferte freie Schrift (Fonts.NAMES)
 
     static int font(Context c) {
-        int i = sp(c).getInt("font", 0);
+        int i = getInt(c, K_FONT, 0);
         return i >= 0 && i < Fonts.NAMES.length ? i : 0;
     }
 
     static void setFont(Context c, int index) {
-        sp(c).edit().putInt("font", index).apply();
+        put(c, K_FONT, index);
     }
 
     // ---- W21: Profil im Kontrollzentrum

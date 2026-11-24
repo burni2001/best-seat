@@ -49,7 +49,7 @@ final class Profiles {
     }
 
     private static SharedPreferences sp(Context c) {
-        return c.getSharedPreferences("settings", Context.MODE_PRIVATE);
+        return Prefs.settings(c);
     }
 
     static synchronized List<Profile> all(Context c) {

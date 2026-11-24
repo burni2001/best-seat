@@ -2,6 +2,7 @@ package tv.bestseat.launcher.switcher;
 
 import android.content.Context;
 import tv.bestseat.launcher.Companions;
+import tv.bestseat.launcher.Prefs;
 import android.content.SharedPreferences;
 
 import java.util.Arrays;
@@ -11,7 +12,6 @@ import java.util.Set;
 /** Einstellungen: globaler Schalter und die Blacklist der ausgeblendeten Apps. */
 public final class SwitcherPrefs {
 
-    private static final String SETTINGS = "settings";
     private static final String KEY_ENABLED = "enabled";
     /** Hintergrund der Leiste unscharf (Bildschirmfoto) statt nur abgedunkelt. */
     private static final String KEY_BLUR = "blur_background";
@@ -42,27 +42,27 @@ public final class SwitcherPrefs {
 
     /** Globaler Schalter: aus heißt, Leiste und „Letzte App“ tun nichts. */
     public static boolean isEnabled(Context context) {
-        return context.getSharedPreferences(SETTINGS, Context.MODE_PRIVATE)
+        return Prefs.settings(context)
                 .getBoolean(KEY_ENABLED, true);
     }
 
     public static void setEnabled(Context context, boolean enabled) {
-        context.getSharedPreferences(SETTINGS, Context.MODE_PRIVATE)
+        Prefs.settings(context)
                 .edit().putBoolean(KEY_ENABLED, enabled).apply();
     }
 
     /** Globaler Schalter „Blur effects“ der Launcher-Einstellungen. */
     public static boolean allBlur(Context context) {
-        return context.getSharedPreferences(SETTINGS, Context.MODE_PRIVATE).getBoolean("blur_all", true);
+        return Prefs.blurEnabled(context);
     }
 
     public static boolean isBlurEnabled(Context context) {
-        return context.getSharedPreferences(SETTINGS, Context.MODE_PRIVATE)
+        return Prefs.settings(context)
                 .getBoolean(KEY_BLUR, true);
     }
 
     public static void setBlurEnabled(Context context, boolean enabled) {
-        context.getSharedPreferences(SETTINGS, Context.MODE_PRIVATE)
+        Prefs.settings(context)
                 .edit().putBoolean(KEY_BLUR, enabled).apply();
     }
 
