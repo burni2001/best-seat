@@ -25,6 +25,7 @@ final class LiquidGlass {
     private static final Paint SHEEN = new Paint(Paint.ANTI_ALIAS_FLAG);
     private static final Paint RIM = new Paint(Paint.ANTI_ALIAS_FLAG);
     private static final Paint GLOW = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private static final Paint CYAN = new Paint(Paint.ANTI_ALIAS_FLAG);
 
     static {
         RIM.setStyle(Paint.Style.STROKE);
@@ -50,20 +51,28 @@ final class LiquidGlass {
         float s = Math.max(0f, Math.min(1f, strength));
 
         // Glanz: oberes Drittel leicht aufgehellt, als wäre die Fläche gewölbt.
-        int sheenTop = Color.argb(Math.round((light ? 70 : 30) * s), 255, 255, 255);
+        // Dunkel: leichter Cyan-Schimmer wie die tvOS-Gläser (#1cbbff, aus dem Design System des Nutzers).
+        int sheenTop = light ? Color.argb(Math.round(70 * s), 255, 255, 255)
+                : Color.argb(Math.round(34 * s), 160, 222, 255);
         SHEEN.setShader(new LinearGradient(0, r.top, 0, r.top + r.height() * 0.42f,
                 sheenTop, Color.TRANSPARENT, Shader.TileMode.CLAMP));
         c.save();
         c.clipPath(shape);
         c.drawRect(r, SHEEN);
+        if (!light) {
+            CYAN.setColor(Color.argb(Math.round(12 * s), 28, 187, 255));
+            c.drawRect(r, CYAN);
+        }
 
         // Innerer Lichtsaum: breit und schwach, deutet die Brechung am Rand an.
         float glowW = 5f * density;
         GLOW.setStrokeWidth(glowW);
         int glowA = Math.round((light ? 55 : 26) * s);
         GLOW.setShader(new LinearGradient(r.left, r.top, r.right, r.bottom,
-                new int[] {Color.argb(glowA, 255, 255, 255), Color.argb(glowA / 4, 255, 255, 255),
-                        Color.argb(glowA / 2, 255, 255, 255)},
+                light ? new int[] {Color.argb(glowA, 255, 255, 255), Color.argb(glowA / 4, 255, 255, 255),
+                        Color.argb(glowA / 2, 255, 255, 255)}
+                        : new int[] {Color.argb(glowA, 170, 228, 255), Color.argb(glowA / 4, 120, 210, 255),
+                        Color.argb(glowA / 2, 170, 228, 255)},
                 new float[] {0f, 0.55f, 1f}, Shader.TileMode.CLAMP));
         c.drawPath(shape, GLOW);
         c.restore();
