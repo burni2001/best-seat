@@ -52,21 +52,20 @@ public final class ControlCenterActivity extends Activity {
     static android.graphics.Bitmap homeBlur;
     private static final float TILE_DP = 47.5f;
 
-    private final Handler handler = new Handler(Looper.getMainLooper());
-    private final Runnable idleClose = this::close;
+    final Handler handler = new Handler(Looper.getMainLooper());
+    final Runnable idleClose = this::close;
     private FrameLayout root;
-    private LinearLayout panel;
-    private LinearLayout body;
-    private StatusPill pill;
+    LinearLayout panel;
+    LinearLayout body;
+    StatusPill pill;
+    private final CcProfilePage profile = new CcProfilePage(this);
     /** Höhe des Kastens mit den Kacheln; die Profilseite übernimmt sie. */
-    private int mainPanelHeight;
-    /** Langes OK auf einem anderen Profil: nach dem Neuaufbau gleich bearbeiten. */
-    private boolean editAfterSwitch;
+    int mainPanelHeight;
     /** Profil gewechselt ohne Neustart: beim Schließen die Startseite neu laden. */
-    private boolean profileSwitched;
+    boolean profileSwitched;
 
     /** Feste Höhe in Pixeln oder 0 = so hoch wie der Inhalt. */
-    private void setPanelHeight(int px) {
+    void setPanelHeight(int px) {
         ViewGroup.LayoutParams lp = panel.getLayoutParams();
         int h = px > 0 ? px : ViewGroup.LayoutParams.WRAP_CONTENT;
         if (lp != null && lp.height != h) {
@@ -123,7 +122,7 @@ public final class ControlCenterActivity extends Activity {
         // Uhrzeit und Profilbild stehen jetzt in der Pille oben rechts (StatusPill), nicht mehr im Kasten.
         shown = new java.lang.ref.WeakReference<>(this);
         pill = new StatusPill(this, true);
-        pill.avatar.setOnClickListener(v -> showProfile());
+        pill.avatar.setOnClickListener(v -> profile.showProfile());
         pill.controls.setOnClickListener(v -> showMain());
         ScrollView scroll = new ScrollView(this);
         scroll.setVerticalScrollBarEnabled(false);
@@ -310,7 +309,7 @@ public final class ControlCenterActivity extends Activity {
         handler.postDelayed(stopFinish, 500);
     }
 
-    private void poke() {
+    void poke() {
         handler.removeCallbacks(idleClose);
         handler.postDelayed(idleClose, IDLE_CLOSE_MS);
     }
@@ -322,7 +321,7 @@ public final class ControlCenterActivity extends Activity {
         if (movingId != null && handleMoveKey(event)) return true;
         if (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_MENU) {
             if (event.getAction() == KeyEvent.ACTION_UP) {
-                if (code == KeyEvent.KEYCODE_BACK && isProfileSub()) showProfile();
+                if (code == KeyEvent.KEYCODE_BACK && profile.isProfileSub()) profile.showProfile();
                 else if (code == KeyEvent.KEYCODE_BACK && body.getTag() != null) showMain();
                 else close();
             }
@@ -340,7 +339,7 @@ public final class ControlCenterActivity extends Activity {
         // Pfeil links ganz links: im Hauptteil schließen (Leiste kam von rechts), im Untermenü zurück.
         if (code == KeyEvent.KEYCODE_DPAD_LEFT && atLeftEdge()) {
             if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
-                if (isProfileSub()) showProfile();
+                if (profile.isProfileSub()) profile.showProfile();
                 else if (body.getTag() != null) showMain();
                 else close();
             }
@@ -348,19 +347,19 @@ public final class ControlCenterActivity extends Activity {
         }
         // W85: Am Ende in jeder Richtung (oben, unten, links, rechts) raus aus dem Kontrollzentrum.
         // Nur beim ersten Druck, nicht beim Halten: Durchlaufen einer Liste endet sonst ungewollt.
-        int dir = arrowDirection(code);
+        int dir = CcFocus.arrowDirection(code);
         if (dir != 0 && !closing) {
             View focused = getCurrentFocus();
             View next = focused == null ? null : android.view.FocusFinder.getInstance()
                     .findNextFocus((ViewGroup) getWindow().getDecorView(), focused, dir);
-            if (focused != null && !beyondEdge(focused, next, dir)) {
+            if (focused != null && !CcFocus.beyondEdge(focused, next, dir)) {
                 if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) close();
                 return true;
             }
             // W86: Hoch/runter in eine Reihe mit anderer Aufteilung: auf die bündige Kachel (rechte Kante
             // zuerst, dann linke), z. B. von Ambilight runter auf die kleine Kachel ganz rechts.
             if (next != null && (dir == View.FOCUS_DOWN || dir == View.FOCUS_UP)) {
-                View aligned = alignedInRow(focused, next);
+                View aligned = CcFocus.alignedInRow(focused, next);
                 if (aligned != null && aligned != next) {
                     if (event.getAction() == KeyEvent.ACTION_DOWN) aligned.requestFocus(dir);
                     return true;
@@ -368,72 +367,6 @@ public final class ControlCenterActivity extends Activity {
             }
         }
         return super.dispatchKeyEvent(event);
-    }
-
-    /**
-     * Liegt next wirklich jenseits der Kante von from (nicht nur schräg daneben)? Android springt sonst z. B.
-     * von der Kachel „Settings“ mit Pfeil rechts hoch zum Profilbild, weil es etwas weiter rechts endet.
-     */
-    private boolean beyondEdge(View from, View next, int dir) {
-        if (next == null) return false;
-        int[] a = new int[2];
-        int[] b = new int[2];
-        from.getLocationOnScreen(a);
-        next.getLocationOnScreen(b);
-        int tol = Ui.dp(this, 4);
-        switch (dir) {
-            case View.FOCUS_RIGHT: return b[0] >= a[0] + from.getWidth() - tol;
-            case View.FOCUS_LEFT: return b[0] + next.getWidth() <= a[0] + tol;
-            case View.FOCUS_DOWN: return b[1] >= a[1] + from.getHeight() - tol;
-            default: return b[1] + next.getHeight() <= a[1] + tol;
-        }
-    }
-
-    /**
-     * Kachel in der Reihe von next, die mit from bündig ist: Steht from rechts in seiner Reihe (oder in der
-     * rechten Spalte), die mit gleicher rechter Kante, steht es links, die mit gleicher linker Kante.
-     */
-    private View alignedInRow(View from, View next) {
-        // Nur waagrechte Reihen (nicht die senkrechte Spalte neben der großen Kachel).
-        if (!(next.getParent() instanceof LinearLayout)
-                || ((LinearLayout) next.getParent()).getOrientation() != LinearLayout.HORIZONTAL) return null;
-        ViewGroup row = (ViewGroup) next.getParent();
-        if (row == from.getParent()) return null;
-        boolean right;
-        if (from.getParent() instanceof LinearLayout
-                && ((LinearLayout) from.getParent()).getOrientation() == LinearLayout.HORIZONTAL) {
-            ViewGroup own = (ViewGroup) from.getParent();
-            int index = own.indexOfChild(from);
-            if (own.getChildCount() < 2) return null;
-            if (index == own.getChildCount() - 1) right = true;
-            else if (index == 0) right = false;
-            else return null;
-        } else {
-            right = SIDE_COLUMN.equals(((View) from.getParent()).getTag());
-            if (!right) return null;
-        }
-        int[] f = new int[2];
-        from.getLocationOnScreen(f);
-        int edge = right ? f[0] + from.getWidth() : f[0];
-        int tol = Ui.dp(this, 4);
-        int[] c = new int[2];
-        for (int i = 0; i < row.getChildCount(); i++) {
-            View v = row.getChildAt(i);
-            if (!v.isFocusable() || v.getVisibility() != View.VISIBLE) continue;
-            v.getLocationOnScreen(c);
-            if (Math.abs((right ? c[0] + v.getWidth() : c[0]) - edge) <= tol) return v;
-        }
-        return null;
-    }
-
-    private static int arrowDirection(int code) {
-        switch (code) {
-            case KeyEvent.KEYCODE_DPAD_UP: return View.FOCUS_UP;
-            case KeyEvent.KEYCODE_DPAD_DOWN: return View.FOCUS_DOWN;
-            case KeyEvent.KEYCODE_DPAD_LEFT: return View.FOCUS_LEFT;
-            case KeyEvent.KEYCODE_DPAD_RIGHT: return View.FOCUS_RIGHT;
-            default: return 0;
-        }
     }
 
     /** Fokus auf einer Kachel der linken Spalte bzw. auf einer Zeile eines Untermenüs. */
@@ -752,349 +685,6 @@ public final class ControlCenterActivity extends Activity {
         first.requestFocus();
     }
 
-    // ---------------------------------------------------------------- Profil (W21)
-
-    /** Profilbild in der Pille neu zeichnen. */
-    private void styleHeaderAvatar(boolean focused) {
-        pill.refreshAvatar();
-    }
-
-    private boolean isProfileSub() {
-        Object t = body.getTag();
-        return t != null && String.valueOf(t).startsWith("profile_");
-    }
-
-    /** Profile wie tvOS (W11): alle Profile als Kreise, Haken am aktiven, „+“ zum Hinzufügen. */
-    private void showProfile() {
-        // Profilseite genauso groß wie die Kachelseite (Höhe merken, solange sie noch zu sehen ist).
-        if (body.getTag() == null && panel.getHeight() > 0) mainPanelHeight = panel.getHeight();
-        setPanelHeight(mainPanelHeight);
-        body.removeAllViews();
-        body.setTag("profile");
-        pill.setSelected("profile");
-        java.util.List<Profiles.Profile> list = Profiles.all(this);
-        String currentId = Profiles.currentId(this);
-        // tvOS: große Kreise, zwei je Reihe, Name darunter.
-        LinearLayout[] rowRef = new LinearLayout[1];
-        java.util.function.Supplier<LinearLayout> nextRow = () -> {
-            if (rowRef[0] == null || rowRef[0].getChildCount() == 2) {
-                LinearLayout row = new LinearLayout(this);
-                row.setOrientation(LinearLayout.HORIZONTAL);
-                row.setGravity(Gravity.CENTER_HORIZONTAL);
-                // Platzhalter rechts, damit eine einzelne Zelle unter der linken steht.
-                row.setTag("profiles");
-                row.setClipChildren(false);
-                LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT);
-                rlp.topMargin = Ui.dp(this, body.getChildCount() == 0 ? 6 : 14);
-                body.addView(row, rlp);
-                rowRef[0] = row;
-            }
-            return rowRef[0];
-        };
-        View focus = null;
-        for (Profiles.Profile pr : list) {
-            boolean active = pr.id.equals(currentId);
-            View cell = profileCell(nextRow.get(), pr, pr.name, active);
-            // OK wechselt, langes OK bearbeitet (wie tvOS; ein anderes Profil wird dafür erst aktiv).
-            cell.setOnClickListener(v -> {
-                if (!active) switchProfile(pr.id);
-            });
-            cell.setOnLongClickListener(v -> {
-                if (active) {
-                    showEditProfile();
-                } else {
-                    Profiles.switchTo(this, pr.id);
-                    profileSwitched = true;
-                    pill.refreshAvatar();
-                    editAfterSwitch = true;
-                    showProfile();
-                }
-                return true;
-            });
-            if (active) focus = cell;
-        }
-        if (list.size() < Profiles.MAX) {
-            View add = profileCell(nextRow.get(), null, "Add Profile", false);
-            add.setOnClickListener(v -> askProfileName("New profile", "", name -> {
-                String id = Profiles.add(this, name);
-                switchProfile(id);
-            }));
-        }
-        // Letzte Reihe mit nur einer Zelle: unsichtbarer Platzhalter, damit sie links bündig steht.
-        if (rowRef[0] != null && rowRef[0].getChildCount() == 1) {
-            rowRef[0].addView(new View(this), new LinearLayout.LayoutParams(Ui.dp(this, 120), 1));
-        }
-        if (focus != null) focus.requestFocus();
-        if (editAfterSwitch) {
-            editAfterSwitch = false;
-            showEditProfile();
-        }
-    }
-
-    private static final int PROFILE_DP = 76;
-
-    /** Ein Profil als großer Kreis mit Namen darunter, aktives mit grünem Haken; profile null = „+“. */
-    private View profileCell(LinearLayout row, Profiles.Profile profile, String label, boolean active) {
-        LinearLayout cell = new LinearLayout(this);
-        cell.setOrientation(LinearLayout.VERTICAL);
-        cell.setGravity(Gravity.CENTER_HORIZONTAL);
-        cell.setFocusable(true);
-        cell.setClickable(true);
-        cell.setClipChildren(false);
-        int size = Ui.dp(this, PROFILE_DP);
-        FrameLayout holder = new FrameLayout(this);
-        holder.setClipChildren(false);
-        TextView circle = new TextView(this);
-        circle.setGravity(Gravity.CENTER);
-        circle.setIncludeFontPadding(false);
-        holder.addView(circle, new FrameLayout.LayoutParams(size, size));
-        if (active) {
-            // Grüner Haken unten rechts mit Rand in Kastenfarbe.
-            TextView badge = new TextView(this);
-            badge.setText("\u2713");
-            badge.setGravity(Gravity.CENTER);
-            badge.setIncludeFontPadding(false);
-            badge.setTextColor(Color.WHITE);
-            badge.setTypeface(Fonts.get(badge.getContext(), Fonts.BOLD));
-            badge.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
-            GradientDrawable g = new GradientDrawable();
-            g.setShape(GradientDrawable.OVAL);
-            g.setColor(Color.rgb(52, 199, 89));
-            g.setStroke(Ui.dp(this, 2), Ui.light ? Color.rgb(236, 236, 240) : Color.rgb(44, 44, 48));
-            badge.setBackground(g);
-            int b = Ui.dp(this, 24);
-            FrameLayout.LayoutParams blp = new FrameLayout.LayoutParams(b, b, Gravity.END | Gravity.BOTTOM);
-            holder.addView(badge, blp);
-        }
-        cell.addView(holder, new LinearLayout.LayoutParams(size, size));
-        TextView text = Ui.text(this, label, 12, active ? Ui.TEXT : Ui.TEXT_DIM, active);
-        text.setGravity(Gravity.CENTER);
-        text.setSingleLine(true);
-        LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT);
-        tlp.topMargin = Ui.dp(this, 8);
-        cell.addView(text, tlp);
-        Runnable style = () -> {
-            boolean has = cell.isFocused();
-            if (profile == null) {
-                GradientDrawable bg = new GradientDrawable();
-                bg.setShape(GradientDrawable.OVAL);
-                bg.setColor(Ui.light ? Color.rgb(205, 208, 216) : Color.rgb(72, 74, 82));
-                if (has) bg.setStroke(Ui.dp(this, 2), Ui.light ? Color.rgb(22, 24, 28) : Color.WHITE);
-                circle.setBackground(bg);
-                circle.setText("+");
-                circle.setTypeface(Fonts.get(circle.getContext(), Fonts.REGULAR));
-                circle.setTextColor(Ui.TEXT);
-                circle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 34);
-            } else {
-                Avatars.style(this, circle, profile.picture(), profile.color, has, profile.name, PROFILE_DP);
-            }
-        };
-        style.run();
-        cell.setOnFocusChangeListener((v, has) -> {
-            style.run();
-            holder.animate().scaleX(has ? 1.1f : 1f).scaleY(has ? 1.1f : 1f).setDuration(Ui.ms(140)).start();
-            text.setTextColor(has || active ? Ui.TEXT : Ui.TEXT_DIM);
-        });
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(Ui.dp(this, 120),
-                ViewGroup.LayoutParams.WRAP_CONTENT);
-        row.addView(cell, lp);
-        return cell;
-    }
-
-    /** Anderes Profil: Startseite mit dessen Layout neu starten. */
-    private void switchProfile(String id) {
-        Profiles.switchTo(this, id);
-        startActivity(new Intent(this, HomeActivity.class)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK));
-        finish();
-        overridePendingTransition(0, 0);
-    }
-
-    /** Aktuelles Profil bearbeiten: Profilbild, Name, Entfernen. */
-    private void showEditProfile() {
-        setPanelHeight(0);
-        body.removeAllViews();
-        body.setTag("profile_edit");
-        TextView name = Ui.text(this, Prefs.userName(this), 15, Ui.TEXT, true);
-        name.setPadding(Ui.dp(this, 4), 0, 0, Ui.dp(this, 2));
-        body.addView(name);
-        TextView hint = Ui.dimText(this, "Choose your profile picture");
-        hint.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
-        hint.setPadding(Ui.dp(this, 4), 0, 0, Ui.dp(this, 10));
-        body.addView(hint);
-        Profiles.Profile me = Profiles.current(this);
-        String current = me.picture();
-        // Kleine Auswahl wie bisher (Anfangsbuchstabe und Tiere), das aktuelle Bild immer dabei,
-        // am Ende „…“ für alle Emojis im Overlay.
-        java.util.List<String> quick = new java.util.ArrayList<>();
-        for (int i = 0; i < 9; i++) quick.add(Prefs.AVATARS[i]);
-        if (!quick.contains(current)) quick.set(8, current);
-        View focus = null;
-        LinearLayout row = null;
-        int size = Ui.dp(this, 40);
-        for (int i = 0; i <= quick.size(); i++) {
-            if (i % 5 == 0) row = avatarRow();
-            TextView a = avatarCell(row, i % 5 > 0);
-            if (i == quick.size()) {
-                // Alle Emojis
-                Runnable st = () -> {
-                    GradientDrawable bg = new GradientDrawable();
-                    bg.setShape(GradientDrawable.OVAL);
-                    bg.setColor(Ui.light ? Color.rgb(205, 208, 216) : Color.rgb(60, 62, 70));
-                    if (a.isFocused()) bg.setStroke(Ui.dp(this, 2), Ui.light ? Color.rgb(22, 24, 28) : Color.WHITE);
-                    a.setBackground(bg);
-                };
-                a.setText("\u2026");
-                a.setTextColor(Ui.TEXT);
-                a.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
-                st.run();
-                a.setOnFocusChangeListener((v, has) -> {
-                    st.run();
-                    v.animate().scaleX(has ? 1.15f : 1f).scaleY(has ? 1.15f : 1f).setDuration(Ui.ms(140)).start();
-                });
-                a.setOnClickListener(v -> showAllEmojis(current));
-                continue;
-            }
-            final String emoji = quick.get(i);
-            Avatars.style(this, a, emoji, me.color, false, me.name, 40);
-            a.setOnFocusChangeListener((v, has) -> {
-                Avatars.style(this, a, emoji, Profiles.current(this).color, has, me.name, 40);
-                v.animate().scaleX(has ? 1.15f : 1f).scaleY(has ? 1.15f : 1f).setDuration(Ui.ms(140)).start();
-            });
-            a.setOnClickListener(v -> {
-                Profiles.setPicture(this, me.id, emoji, null);
-                styleHeaderAvatar(false);
-                showProfile();
-            });
-            if (emoji.equals(current) && focus == null) focus = a;
-        }
-        // Hintergrundfarbe: das eigene Bild auf jeder Farbe, die gewählte mit dünnem Ring.
-        TextView colorTitle = Ui.dimText(this, "Background");
-        colorTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
-        colorTitle.setPadding(Ui.dp(this, 4), Ui.dp(this, 4), 0, Ui.dp(this, 8));
-        body.addView(colorTitle);
-        for (int i = 0; i < Avatars.colorCount(); i++) {
-            if (i % 5 == 0) row = avatarRow();
-            TextView a = avatarCell(row, i % 5 > 0);
-            final int color = i;
-            boolean chosen = color == me.color || (me.color < 0 && color == 0 && !current.isEmpty());
-            Runnable st = () -> {
-                Avatars.style(this, a, current, color, a.isFocused(), me.name, 40);
-                if (chosen && !a.isFocused() && a.getBackground() instanceof GradientDrawable) {
-                    ((GradientDrawable) a.getBackground()).setStroke(Ui.dp(this, 2), Color.argb(150, 255, 255, 255));
-                }
-            };
-            st.run();
-            a.setOnFocusChangeListener((v, has) -> {
-                st.run();
-                v.animate().scaleX(has ? 1.15f : 1f).scaleY(has ? 1.15f : 1f).setDuration(Ui.ms(140)).start();
-            });
-            a.setOnClickListener(v -> {
-                Profiles.setPicture(this, me.id, null, color);
-                styleHeaderAvatar(false);
-                showEditProfile();
-                focusColor(color);
-            });
-        }
-        wideRow("Change name", () -> askProfileName("Profile name", Prefs.userName(this), n -> {
-            Prefs.setUserName(this, n);
-            styleHeaderAvatar(false);
-            showEditProfile();
-        }));
-        if (Profiles.all(this).size() > 1) wideRow("Remove profile", this::confirmRemoveProfile);
-        if (focus != null) focus.requestFocus();
-    }
-
-    private LinearLayout avatarRow() {
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setClipChildren(false);
-        LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT);
-        rlp.bottomMargin = Ui.dp(this, 10);
-        body.addView(row, rlp);
-        return row;
-    }
-
-    private TextView avatarCell(LinearLayout row, boolean gap) {
-        TextView a = new TextView(this);
-        a.setGravity(Gravity.CENTER);
-        a.setIncludeFontPadding(false);
-        a.setFocusable(true);
-        a.setClickable(true);
-        LinearLayout.LayoutParams alp = new LinearLayout.LayoutParams(Ui.dp(this, 40), Ui.dp(this, 40));
-        if (gap) alp.leftMargin = Ui.dp(this, 12);
-        row.addView(a, alp);
-        return a;
-    }
-
-    /** Nach dem Wählen einer Farbe den Fokus auf derselben Farbe lassen. */
-    private void focusColor(int color) {
-        int seen = 0;
-        for (int i = 0; i < body.getChildCount(); i++) {
-            View child = body.getChildAt(i);
-            if (child instanceof TextView && "Background".contentEquals(((TextView) child).getText())) {
-                seen = 1;
-                continue;
-            }
-            if (seen > 0 && child instanceof LinearLayout && ((LinearLayout) child).getChildCount() > 0
-                    && ((LinearLayout) child).getChildAt(0) instanceof TextView) {
-                LinearLayout row = (LinearLayout) child;
-                if (color < row.getChildCount()) {
-                    row.getChildAt(color).requestFocus();
-                    return;
-                }
-                color -= row.getChildCount();
-            }
-        }
-    }
-
-    /** Overlay mit allen Emojis; die Leiste bleibt offen, solange es offen ist. */
-    private void showAllEmojis(String current) {
-        handler.removeCallbacks(idleClose);
-        String id = Profiles.currentId(this);
-        android.app.Dialog d = Avatars.chooser(this, current, emoji -> {
-            Profiles.setPicture(this, id, emoji, null);
-            styleHeaderAvatar(false);
-            showEditProfile();
-        });
-        d.setOnDismissListener(x -> poke());
-        d.show();
-    }
-
-    private void confirmRemoveProfile() {
-        body.removeAllViews();
-        body.setTag("profile_remove");
-        TextView q = Ui.text(this, "Remove " + Prefs.userName(this) + "?", 15, Ui.TEXT, true);
-        q.setPadding(Ui.dp(this, 4), 0, 0, Ui.dp(this, 4));
-        body.addView(q);
-        TextView info = Ui.dimText(this, "Its tiles and folders will be deleted.");
-        info.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
-        info.setPadding(Ui.dp(this, 4), 0, 0, Ui.dp(this, 6));
-        body.addView(info);
-        View keep = wideRow("Keep", this::showEditProfile);
-        wideRow("Remove", () -> {
-            String id = Profiles.currentId(this);
-            Profiles.remove(this, id);
-            switchProfile(Profiles.currentId(this));
-        });
-        keep.requestFocus();
-    }
-
-    private interface NameCallback {
-        void done(String name);
-    }
-
-    private void askProfileName(String title, String preset, NameCallback callback) {
-        handler.removeCallbacks(idleClose);
-        Dialogs.Panel p = Dialogs.askText(this, title, preset, n -> {
-            if (!n.isEmpty()) callback.done(n);
-        });
-        p.dialog.setOnDismissListener(d -> poke());
-    }
-
     private void confirmVpnOff() {
         body.removeAllViews();
         body.setTag("vpn");
@@ -1197,7 +787,7 @@ public final class ControlCenterActivity extends Activity {
         return b;
     }
 
-    private static final String SIDE_COLUMN = "side";
+    static final String SIDE_COLUMN = "side";
     private static final float SMALL_DP = TILE_DP;
 
     /** Kleine quadratische Kachel nur mit Symbol (tvOS-Kontrollzentrum, unterste Reihe). */
@@ -1303,7 +893,7 @@ public final class ControlCenterActivity extends Activity {
         return b;
     }
 
-    private View wideRow(String label, Runnable action) {
+    View wideRow(String label, Runnable action) {
         LinearLayout row = Ui.row(this);
         row.setMinimumHeight(Ui.dp(this, 42));
         row.setPadding(Ui.dp(this, 14), 0, Ui.dp(this, 14), 0);
