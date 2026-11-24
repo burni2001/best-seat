@@ -25,7 +25,21 @@ final class FolderDrawable extends Drawable {
     private final Paint bg = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint cellPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
+    /** Glass: unscharfes Abbild des Starthintergrunds, gesetzt von TopShelf, für die Lupe in der Ordnerkachel. */
+    static volatile android.graphics.Bitmap homeShot;
+    private static final java.util.Set<FolderDrawable> LIVE =
+            java.util.Collections.newSetFromMap(new java.util.WeakHashMap<>());
+    private final LiquidGlass.Lens lens = new LiquidGlass.Lens();
+    private final RectF lensBox = new RectF();
+
+    /** Alle Ordnerkacheln neu zeichnen, damit ihre Lupe der neuen Lage oder dem neuen Hintergrund folgt. */
+    static void refreshGlass() {
+        if (!LiquidGlass.on) return;
+        for (FolderDrawable d : new java.util.ArrayList<>(LIVE)) d.invalidateSelf();
+    }
+
     FolderDrawable(List<Tile> members) {
+        LIVE.add(this);
         this.members = members;
         int n = Math.min(COLS * ROWS, members.size());
         banners = new Drawable[n];
@@ -35,11 +49,19 @@ final class FolderDrawable extends Drawable {
             icons[i] = copy(members.get(i).icon);
         }
         bg.setColor(Ui.FOLDER_TILE);
+        // Glass: Tönung schwächer, damit der Hintergrund durch die Lupe zu sehen ist.
+        if (LiquidGlass.on) bg.setAlpha(Math.round(Color.alpha(Ui.FOLDER_TILE) * 0.6f));
     }
 
     @Override
     public void draw(Canvas c) {
         Rect b = getBounds();
+        android.graphics.Bitmap shot = homeShot;
+        if (LiquidGlass.on && shot != null && getCallback() instanceof android.view.View) {
+            // Glass: Starthintergrund hinter der Kachel durch die Lupe, darüber die Tönung.
+            lensBox.set(b);
+            lens.draw(c, lensBox, b.width() * 0.12f, LiquidGlass.density(), shot, (android.view.View) getCallback());
+        }
         c.drawRect(b, bg);
         // Maße wie die tvOS-Ordnerkachel: 3×3 Mini-Kacheln 58×35 in 250×150, Schritt 70 × 44,
         // Rand links 26 und oben 14, Radius 7 – alles relativ zur Kachelgröße.

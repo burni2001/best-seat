@@ -331,6 +331,22 @@ final class TopShelf {
      * in 480 px (zwei verschiedene Bitmaps); ohne Adresse blendete der Hintergrund bei jedem Wechsel
      * zwischen Karte und App neu über (B41).
      */
+    /** Glass: Starthintergrund (Bild + Abdunklung) klein und weichgezeichnet für die Lupe der Ordnerkacheln. */
+    private void updateLensShot(Bitmap from) {
+        if (!LiquidGlass.on) return;
+        try {
+            Bitmap small = Bitmap.createBitmap(192, 108, Bitmap.Config.ARGB_8888);
+            Canvas c = new Canvas(small);
+            c.drawColor(Ui.BACKGROUND);
+            c.drawBitmap(from, null, new Rect(0, 0, 192, 108), new android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG));
+            c.drawColor(Ui.light ? Color.argb(115, 255, 255, 255) : Color.argb(105, 0, 0, 0));
+            FolderDrawable.homeShot = Snapshot.blur(small);
+            FolderDrawable.refreshGlass();
+        } catch (RuntimeException e) {
+            // Ohne Abbild bleibt die Ordnerkachel ohne Lupe.
+        }
+    }
+
     private void setBackdrop(Drawable d, String sourceKey) {
         Object key = sourceKey != null ? sourceKey : d instanceof BitmapDrawable
                 ? ((BitmapDrawable) d).getBitmap()
@@ -375,6 +391,7 @@ final class TopShelf {
             td.startTransition((int) Ui.ms(252));
         }
         backdropBmp = next;
+        updateLensShot(next);
     }
 
     private void maybeShowHero() {

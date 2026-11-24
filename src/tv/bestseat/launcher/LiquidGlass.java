@@ -113,9 +113,7 @@ final class LiquidGlass {
         private final float density;
         private final float strength;
         private final RectF box = new RectF();
-        private final Path clip = new Path();
-        private final int[] loc = new int[2];
-        private final Paint image = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.ANTI_ALIAS_FLAG);
+        private final Lens lens = new Lens();
         private android.graphics.Bitmap backdrop;
         private android.view.View host;
 
@@ -139,16 +137,19 @@ final class LiquidGlass {
             box.set(getBounds());
             float radius = getCornerRadius();
             radius = Math.min(radius, Math.min(box.width(), box.height()) / 2f);
-            if (on && backdrop != null && host != null) drawBackdrop(canvas, radius);
+            if (on && backdrop != null && host != null) lens.draw(canvas, box, radius, density, backdrop, host);
             super.draw(canvas);
             if (!on) return;
             LiquidGlass.draw(canvas, box, radius, density, strength);
         }
+    }
 
-        /**
-         * Lupe (AGSL, ab Android 13): Mitte leicht vergrößert, am Rand zieht das Glas den Hintergrund
-         * von außen herein wie eine gewölbte Kante, die das Licht bricht.
-         */
+    /**
+     * Glas mit Hintergrund: zeigt den Ausschnitt eines bildschirmgroß gedachten (klein gerechneten)
+     * Abbilds, der genau hinter host liegt. Ab Android 13 durch eine Lupe (AGSL): Mitte leicht vergrößert,
+     * am Rand zieht das Glas den Hintergrund von außen herein wie eine gewölbte, lichtbrechende Kante.
+     */
+    static final class Lens {
         private static final String LENS = ""
                 + "uniform shader img; uniform float2 center; uniform float2 half; uniform float radius;"
                 + "uniform float zoom; uniform float band; uniform float bend;"
@@ -163,13 +164,17 @@ final class LiquidGlass {
                 + "  return img.eval(center + q / zoom + n * (t * t * band * bend));"
                 + "}";
         private static final float ZOOM = 1.18f;
+        private final Path clip = new Path();
+        private final int[] loc = new int[2];
+        private final Paint image = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.ANTI_ALIAS_FLAG);
         private final android.graphics.Matrix map = new android.graphics.Matrix();
-        private Object lens;
+        private Object shader;
 
-        private void drawBackdrop(Canvas canvas, float radius) {
+        void draw(Canvas canvas, RectF box, float radius, float density, android.graphics.Bitmap backdrop,
+                android.view.View host) {
             android.view.View root = host.getRootView();
             if (!(host.getParent() instanceof android.view.View) || root == null || root.getWidth() <= 0) return;
-            // Lage ohne die eigene Fokus-Vergrößerung der Kachel: Die skaliert das Glas mit, wie eine Linse.
+            // Lage ohne die eigene Vergrößerung von host: Die skaliert das Glas mit, wie eine Linse.
             android.view.View parent = (android.view.View) host.getParent();
             parent.getLocationInWindow(loc);
             float sx = 1f, sy = 1f;
@@ -182,29 +187,24 @@ final class LiquidGlass {
             float y = loc[1] + (host.getTop() - parent.getScrollY()) * sy;
             clip.reset();
             clip.addRoundRect(box, radius, radius, Path.Direction.CW);
-            if (android.os.Build.VERSION.SDK_INT >= 33 && drawLens(canvas, radius, x, y, sx, sy, root)) return;
+            map.setScale(root.getWidth() / (float) backdrop.getWidth() / sx,
+                    root.getHeight() / (float) backdrop.getHeight() / sy);
+            map.postTranslate(-x / sx, -y / sy);
+            if (android.os.Build.VERSION.SDK_INT >= 33 && drawLens(canvas, box, radius, density, backdrop)) return;
             canvas.save();
             canvas.clipPath(clip);
-            canvas.translate(-x / sx, -y / sy);
-            canvas.scale(root.getWidth() / (float) backdrop.getWidth() / sx,
-                    root.getHeight() / (float) backdrop.getHeight() / sy);
+            canvas.concat(map);
             canvas.drawBitmap(backdrop, 0, 0, image);
             canvas.restore();
         }
 
         @android.annotation.TargetApi(33)
-        private boolean drawLens(Canvas canvas, float radius, float x, float y, float sx, float sy,
-                android.view.View root) {
+        private boolean drawLens(Canvas canvas, RectF box, float radius, float density, android.graphics.Bitmap backdrop) {
             try {
-                android.graphics.RuntimeShader s;
-                if (lens == null) lens = new android.graphics.RuntimeShader(LENS);
-                s = (android.graphics.RuntimeShader) lens;
+                if (shader == null) shader = new android.graphics.RuntimeShader(LENS);
+                android.graphics.RuntimeShader s = (android.graphics.RuntimeShader) shader;
                 android.graphics.BitmapShader src = new android.graphics.BitmapShader(backdrop,
                         Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
-                // Bildpunkt des Abbilds -> Kachel: wie der Weg ohne Lupe.
-                map.setScale(root.getWidth() / (float) backdrop.getWidth() / sx,
-                        root.getHeight() / (float) backdrop.getHeight() / sy);
-                map.postTranslate(-x / sx, -y / sy);
                 src.setLocalMatrix(map);
                 s.setInputShader("img", src);
                 s.setFloatUniform("center", box.centerX(), box.centerY());
@@ -218,7 +218,7 @@ final class LiquidGlass {
                 image.setShader(null);
                 return true;
             } catch (RuntimeException e) {
-                lens = null;
+                shader = null;
                 image.setShader(null);
                 return false;
             }

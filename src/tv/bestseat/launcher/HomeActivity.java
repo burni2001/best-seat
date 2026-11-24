@@ -364,6 +364,16 @@ public final class HomeActivity extends Activity
         FrameLayout root = new FrameLayout(this);
         rootView = root;
         root.setBackgroundColor(Ui.BACKGROUND);
+        if (LiquidGlass.on) {
+            // Lupe der Ordnerkacheln folgt dem Scrollen und der Fokus-Vergrößerung.
+            root.getViewTreeObserver().addOnScrollChangedListener(FolderDrawable::refreshGlass);
+            root.getViewTreeObserver().addOnGlobalFocusChangeListener((was, now) -> {
+                android.animation.ValueAnimator follow = android.animation.ValueAnimator.ofFloat(0f, 1f);
+                follow.setDuration(450);
+                follow.addUpdateListener(a -> FolderDrawable.refreshGlass());
+                follow.start();
+            });
+        }
         root.setClipChildren(false);
 
         topShelf.addBackground(root);
