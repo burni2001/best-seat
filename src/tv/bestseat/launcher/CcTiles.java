@@ -57,6 +57,8 @@ final class CcTiles {
     /** Große Kachel bei Glass: deutlich runder als die 12 dp ohne Glass. */
     private static final float BIG_GLASS_RADIUS_DP = 24f;
     private static final float FOCUS_SCALE = 1.05f;
+    /** Fokus-Anhebung: klein genug, dass der Schatten in den Rand des Kastens passt (12 dp). */
+    private static final float FOCUS_Z_DP = 5f;
     private static final float TILE_DP = 47.5f;
 
     private final java.util.Map<String, ControlIcons.Icon> icons = new java.util.HashMap<>();
@@ -157,7 +159,7 @@ final class CcTiles {
             v.setBackground(bg(has, r, v));
             icon.setColor(iconColor(id, has));
             v.animate().scaleX(has ? FOCUS_SCALE : 1f).scaleY(has ? FOCUS_SCALE : 1f)
-                    .translationZ(has ? Ui.dp(cc, 10) : 0).setDuration(Ui.ms(140)).start();
+                    .translationZ(has ? Ui.dp(cc, FOCUS_Z_DP) : 0).setDuration(Ui.ms(140)).start();
         });
         b.setOnClickListener(v -> action.run());
         return b;
@@ -232,7 +234,7 @@ final class CcTiles {
             t.setSelected(has);
             // Leicht vergrößert, aber mit Luft zu den Nachbarn (B19).
             v.animate().scaleX(has ? FOCUS_SCALE : 1f).scaleY(has ? FOCUS_SCALE : 1f)
-                    .translationZ(has ? Ui.dp(cc, 10) : 0).setDuration(Ui.ms(140)).start();
+                    .translationZ(has ? Ui.dp(cc, FOCUS_Z_DP) : 0).setDuration(Ui.ms(140)).start();
         });
         b.setOnClickListener(v -> action.run());
         return b;

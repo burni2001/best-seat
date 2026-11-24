@@ -117,6 +117,9 @@ public final class ControlCenterActivity extends Activity {
         panel.setElevation(LiquidGlass.on ? 0 : Ui.dp(this, 30));
         // Children stay inside their own bounds, so the scrolling list never covers clock and date (B10)
         panel.setClipChildren(true);
+        // Kasten schneidet entlang seiner runden Kontur ab, nicht rechteckig: Sonst ragte der Schatten der
+        // fokussierten Eckkachel eckig über die Rundung hinaus.
+        panel.setClipToOutline(true);
         panel.setClipToPadding(false);
 
         // Uhrzeit und Profilbild stehen jetzt in der Pille oben rechts (StatusPill), nicht mehr im Kasten.
@@ -145,9 +148,7 @@ public final class ControlCenterActivity extends Activity {
             if (scroll.getClipToPadding() != scrolls) {
                 scroll.setClipToPadding(scrolls);
                 scroll.setClipChildren(scrolls);
-                panel.setClipChildren(scrolls);
                 scroll.invalidate();
-                panel.invalidate();
             }
         });
         // Glas-Kacheln zeigen den Hintergrund an ihrer Stelle: beim Scrollen neu zeichnen.
