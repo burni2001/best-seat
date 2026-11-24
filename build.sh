@@ -28,7 +28,7 @@ fi
 
 "$BT/aapt2" link --manifest "$DIR/AndroidManifest.xml" -I "$ANDROID_JAR" "$OUT/res.zip" -A "$DIR/assets" \
   --min-sdk-version 26 --target-sdk-version 34 \
-  --version-code 122 --version-name 0.21.0 \
+  --version-code 123 --version-name 0.21.1 \
   -o "$OUT/unsigned.apk"
 
 # Paketnamen der eigenen Begleit-Apps (Hue Sync, Helper, VPN-Status ...) stehen nur lokal in

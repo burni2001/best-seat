@@ -51,45 +51,25 @@ public final class HomeActivity extends Activity
     static final String ACTION_EXPORT_BANNERS = "tv.bestseat.launcher.EXPORT_BANNERS";
     static final String ACTION_HIDDEN = "tv.bestseat.launcher.SHOW_HIDDEN";
 
-    // Wie der tvOS-Screenshot des Nutzers: Leiste ab ~785 px, nächste Reihe ab ~1056 px (~24 px sichtbar).
-    private static final int SHELF_DP = 378;
     /** Rand links/rechts wie tvOS (90 px). */
-    private static final int SIDE_DP = 45;
+    static final int SIDE_DP = 45;
     private static final long STORAGE_TIMEOUT_MS = 90_000;
 
-    private final Handler handler = new Handler(Looper.getMainLooper());
+    final Handler handler = new Handler(Looper.getMainLooper());
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
 
     private LayoutStore store;
     private final HomeBanners banners = new HomeBanners(this);
+    private final TopShelf topShelf = new TopShelf(this, banners);
     private List<Tile> allTiles = new ArrayList<>();
     private final List<TileView> tileViews = new ArrayList<>();
     private final List<Tile> visible = new ArrayList<>();
 
-    private PageScrollView scroll;
+    PageScrollView scroll;
     private LinearLayout grid;
-    private FrameLayout shelf;
-    private ImageView backdrop;
-    private ImageView hero;
     /** Fläche der Favoriten-Leiste (null ohne Favoriten). */
     private DockDrawable dock;
-    private FrameLayout.LayoutParams heroLp;
-    /** Ganzflächige Farbe wie bei tvOS, wenn eine App ohne Inhalte ein einfarbiges Banner hat. */
-    private View flatBg;
-    private float flatTarget;
-    private TextView heroTitle;
-    private TextView heroSub;
-    private FrameLayout heroGroup;
-    private LinearLayout contentGroup;
-    private TextView shelfApp;
-    private TextView shelfSection;
-    private LinearLayout cardRow;
-    private CardScrollView cardScroll;
-    private TextView cardTitle;
-    private TileView currentTileView;
-    private String shelfKey;
-    private final ExecutorService shelfWorker = Executors.newSingleThreadExecutor();
-    private Runnable pendingShelfLoad;
+    TileView currentTileView;
     private LinearLayout topBar;
     private LinearLayout topContent;
     private final Runnable hideTopBar = this::fadeTopBar;
@@ -98,9 +78,9 @@ public final class HomeActivity extends Activity
     private TextView vpnPill;
     private StatusPill statusPill;
 
-    private String focusedKey;
+    String focusedKey;
     private String movingKey;
-    private int lastDx;
+    int lastDx;
     private int lastDy;
     private int builtColumns;
     private boolean builtNonTv;
@@ -110,13 +90,6 @@ public final class HomeActivity extends Activity
     private int builtStoreVersion;
     private boolean builtLight;
     private int builtFont;
-    /** Fokus unter der Favoriten-Reihe: Top Shelf eingefroren, Hintergrund unscharf oder schlicht (W17). */
-    private boolean frozen;
-    private float backdropBlur = BACKDROP_BLUR;
-    private ValueAnimator freezeAnim;
-    private static final float BACKDROP_BLUR = 9f;
-    private static final float BACKDROP_BLUR_FROZEN = 26f;
-    private static final float BACKDROP_ALPHA = 1f;
     private boolean resumed;
     /** Sichtbar seit (uptime), 0 = gestoppt. Für „Home auf der Startseite“: Android pausiert vor onNewIntent. */
     private long visibleSince;
@@ -171,7 +144,7 @@ public final class HomeActivity extends Activity
         } catch (RuntimeException ignored) {
         }
         worker.shutdownNow();
-        shelfWorker.shutdownNow();
+        topShelf.destroy();
     }
 
     /** Laufende Startseite für die Übergabe der Pille an das Kontrollzentrum (gleicher Prozess). */
@@ -208,22 +181,7 @@ public final class HomeActivity extends Activity
             reload();
         }
         vpnPill.setVisibility(Prefs.showVpn(this) && vpnConnected ? View.VISIBLE : View.GONE);
-        // Hintergrund-Art oder Blur-Schalter geändert: Hintergrund neu setzen.
-        int bgState = Prefs.background(this) * 2 + (Prefs.blurEnabled(this) ? 1 : 0);
-        if (builtBackground != -1 && bgState != builtBackground) {
-            builtBackground = bgState;
-            backdropSource = null;
-            setBackdropBlur(backdropBlur);
-            if (currentTileView != null) showInShelf(currentTileView.tile);
-        }
-        builtBackground = bgState;
-        // Nach dem Schauen ändern sich Watch Next und Vorschauen: neu laden.
-        ShelfContent.invalidate();
-        if (frozen) {
-            applyFreeze(true, false);
-        } else if (currentTileView != null && currentTileView.hasFocus()) {
-            updateShelfContent(currentTileView.tile);
-        }
+        topShelf.onResume(currentTileView);
     }
 
     @Override
@@ -390,31 +348,7 @@ public final class HomeActivity extends Activity
         root.setBackgroundColor(Ui.BACKGROUND);
         root.setClipChildren(false);
 
-        // Hintergrund: Banner der fokussierten App, klein, unscharf und hochskaliert (spart GPU).
-        backdrop = new ImageView(this);
-        backdrop.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        int screenW = getResources().getDisplayMetrics().widthPixels;
-        int smallW = 320;
-        int smallH = 180;
-        backdrop.setPivotX(0);
-        backdrop.setPivotY(0);
-        float scale = screenW / (float) smallW;
-        backdrop.setScaleX(scale);
-        backdrop.setScaleY(scale);
-        backdrop.setAlpha(BACKDROP_ALPHA);
-        setBackdropBlur(BACKDROP_BLUR);
-        root.addView(backdrop, new FrameLayout.LayoutParams(smallW, smallH));
-
-        View shade = new View(this);
-        // tvOS: Der Hintergrund füllt immer den ganzen Bildschirm (unten nur stärker unscharf),
-        // dunkel abgedunkelt, hell aufgehellt; kein Verlauf mehr in eine einfarbige Fläche.
-        shade.setBackgroundColor(Ui.light ? Color.argb(115, 255, 255, 255) : Color.argb(105, 0, 0, 0));
-        root.addView(shade, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT));
-        flatBg = new View(this);
-        flatBg.setAlpha(0f);
-        root.addView(flatBg, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT));
+        topShelf.addBackground(root);
 
         scroll = new PageScrollView(this);
         LinearLayout page = new LinearLayout(this);
@@ -428,89 +362,8 @@ public final class HomeActivity extends Activity
         root.addView(scroll, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
 
-        // Top Shelf: entweder großes Banner (heroGroup) oder Inhalte der App (contentGroup).
-        shelf = new FrameLayout(this);
-        shelf.setClipChildren(false);
-        heroGroup = new FrameLayout(this);
-        heroGroup.setClipChildren(false);
-        shelf.addView(heroGroup, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT));
-        hero = new ImageView(this);
-        hero.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        hero.setOutlineProvider(new RoundedOutline(Ui.dp(this, 12)));
-        hero.setClipToOutline(true);
-        hero.setElevation(Ui.dp(this, 20));
-        FrameLayout.LayoutParams hp = new FrameLayout.LayoutParams(Ui.dp(this, 423), Ui.dp(this, 238),
-                Gravity.END | Gravity.TOP);
-        // tvOS 2-up-Karte: 846x476 px, Radius 24, Oberkante y 170.
-        hp.topMargin = Ui.dp(this, 85);
-        hp.rightMargin = Ui.dp(this, SIDE_DP);
-        heroLp = hp;
-        heroGroup.addView(hero, hp);
-
-        LinearLayout titles = new LinearLayout(this);
-        titles.setOrientation(LinearLayout.VERTICAL);
-        heroTitle = Ui.text(this, "", 38, Color.WHITE, true);
-        heroTitle.setMaxLines(2);
-        heroTitle.setShadowLayer(12, 0, 2, Color.argb(160, 0, 0, 0));
-        heroSub = Ui.text(this, "", 16, Color.rgb(200, 202, 208), false);
-        heroSub.setPadding(0, Ui.dp(this, 4), 0, 0);
-        titles.addView(heroTitle);
-        titles.addView(heroSub);
-        FrameLayout.LayoutParams tp = new FrameLayout.LayoutParams(Ui.dp(this, 380),
-                ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.START | Gravity.BOTTOM);
-        tp.leftMargin = Ui.dp(this, SIDE_DP);
-        tp.bottomMargin = Ui.dp(this, 49);
-        heroGroup.addView(titles, tp);
-
-        contentGroup = new LinearLayout(this);
-        contentGroup.setOrientation(LinearLayout.VERTICAL);
-        contentGroup.setClipChildren(false);
-        contentGroup.setClipToPadding(false);
-        contentGroup.setVisibility(View.GONE);
-        LinearLayout captionLine = new LinearLayout(this);
-        captionLine.setOrientation(LinearLayout.HORIZONTAL);
-        captionLine.setGravity(Gravity.BOTTOM);
-        // Überschrift-Schatten braucht Platz (Polsterung im Text), Ausgleich hier: Text bleibt an x SIDE_DP.
-        int sh = Ui.dp(this, 10);
-        captionLine.setPadding(Ui.dp(this, SIDE_DP) - sh, 0, Ui.dp(this, SIDE_DP), 0);
-        captionLine.setClipChildren(false);
-        captionLine.setClipToPadding(false);
-        // tvOS-Abschnittstitel: Bold 48 px, weiss 50 %, bei x 90 / y 94.
-        int capShadow = Ui.light ? Color.argb(90, 0, 0, 0) : Color.argb(150, 0, 0, 0);
-        shelfApp = Ui.text(this, "", 24, Color.WHITE, true);
-        shelfApp.setShadowLayer(Ui.dp(this, 8), 0, Ui.dp(this, 1), capShadow);
-        shelfApp.setPadding(sh, sh, 0, sh);
-        shelfSection = Ui.text(this, "", 18, Color.argb(220, 255, 255, 255), false);
-        shelfSection.setShadowLayer(Ui.dp(this, 8), 0, Ui.dp(this, 1), capShadow);
-        shelfSection.setTypeface(Fonts.get(shelfSection.getContext(), Fonts.MEDIUM));
-        shelfSection.setPadding(Ui.dp(this, 14), sh, sh, sh + Ui.dp(this, 3));
-        captionLine.addView(shelfApp);
-        captionLine.addView(shelfSection);
-        contentGroup.addView(captionLine);
-        cardScroll = new CardScrollView(this);
-        cardScroll.setClipChildren(false);
-        cardScroll.setClipToPadding(false);
-        // Unfokussiert links bündig mit den App-Kacheln darunter (W84), nicht mit dem Rahmen der Leiste.
-        cardScroll.setPadding(Ui.dp(this, SIDE_DP), Ui.dp(this, 12), Ui.dp(this, SIDE_DP), Ui.dp(this, 24));
-        cardRow = new LinearLayout(this);
-        cardRow.setOrientation(LinearLayout.HORIZONTAL);
-        cardRow.setClipChildren(false);
-        cardRow.setClipToPadding(false);
-        cardScroll.addView(cardRow);
-        contentGroup.addView(cardScroll);
-        cardTitle = Ui.text(this, "", 16, Ui.TEXT, true);
-        cardTitle.setPadding(Ui.dp(this, SIDE_DP), 0, Ui.dp(this, SIDE_DP), 0);
-        cardTitle.setShadowLayer(8, 0, 1, Color.BLACK);
-        // Keine Textzeile unter den Inhaltskarten (B17); cardTitle bleibt unsichtbar im Code.
-        cardTitle.setVisibility(View.GONE);
-        contentGroup.addView(cardTitle);
-        FrameLayout.LayoutParams cg = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP);
-        cg.topMargin = Ui.dp(this, 44) - sh;
-        shelf.addView(contentGroup, cg);
-
-        page.addView(shelf, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, SHELF_DP)));
+        page.addView(topShelf.createShelf(), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                Ui.dp(this, TopShelf.SHELF_DP)));
 
         grid = new LinearLayout(this);
         grid.setOrientation(LinearLayout.VERTICAL);
@@ -547,22 +400,11 @@ public final class HomeActivity extends Activity
         root.addView(topBar, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP));
 
-        int shelfPx = Ui.dp(this, SHELF_DP);
+        int shelfPx = Ui.dp(this, TopShelf.SHELF_DP);
         scroll.listener = y -> {
             float f = Math.max(0f, Math.min(1f, y / (float) (shelfPx * 0.8f)));
-            shelf.setAlpha(1f - f);
+            topShelf.onScroll(y, f);
             topBar.setAlpha(1f - Math.min(1f, f * 3f));
-            if (flatTarget > 0f) {
-                flatBg.setAlpha(flatTarget * (1f - f));
-                // Banner nur auf ganz deckender Fläche zeigen: beim Wegscrollen sofort weg,
-                // beim Zurückscrollen erst oben wieder einblenden.
-                if (y > 0 && !heroPending && hero.getAlpha() > 0f) {
-                    hero.animate().cancel();
-                    hero.setAlpha(0f);
-                    heroPending = true;
-                }
-                maybeShowHero();
-            }
             applyRowLift(y);
         };
         grid.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> applyRowLift(scroll.getScrollY()));
@@ -782,11 +624,11 @@ public final class HomeActivity extends Activity
                     currentTileView = tv;
                     if (favorites && rowIndex > 0) {
                         // Nur die Favoriten füllen den Top Shelf; darunter bleibt der letzte Inhalt stehen.
-                        if (pendingShelfLoad != null) handler.removeCallbacks(pendingShelfLoad);
-                        applyFreeze(true, true);
+                        topShelf.cancelPendingLoad();
+                        topShelf.freeze(true, true);
                     } else {
-                        applyFreeze(false, true);
-                        showInShelf(tile);
+                        topShelf.freeze(false, true);
+                        topShelf.show(tile);
                     }
                     scrollToRow(rowIndex);
                 }
@@ -827,59 +669,6 @@ public final class HomeActivity extends Activity
     }
 
     /**
-     * Hintergrund einfrieren (Fokus unter den Favoriten) oder wieder freigeben.
-     * „Blurred content“: letzter Inhalt stärker unscharf; „Plain“: Bild blendet aus.
-     */
-    private void applyFreeze(boolean freeze, boolean animate) {
-        float toBlur = freeze ? BACKDROP_BLUR_FROZEN : BACKDROP_BLUR;
-        float toAlpha = BACKDROP_ALPHA;
-        if (freeze == frozen && animate) return;
-        frozen = freeze;
-        if (freezeAnim != null) freezeAnim.cancel();
-        freezeAnim = null;
-        backdrop.animate().cancel();
-        if (!animate) {
-            setBackdropBlur(toBlur);
-            backdrop.setAlpha(toAlpha);
-            return;
-        }
-        final float fromBlur = backdropBlur;
-        ValueAnimator a = ValueAnimator.ofFloat(0f, 1f);
-        a.setDuration(Ui.ms(freeze ? 450 : 300));
-        a.addUpdateListener(an -> setBackdropBlur(fromBlur + (toBlur - fromBlur) * an.getAnimatedFraction()));
-        a.addListener(new FreezeEnd(this, a));
-        freezeAnim = a;
-        a.start();
-        backdrop.animate().alpha(toAlpha).setDuration(Ui.ms(freeze ? 450 : 300)).start();
-    }
-
-    void freezeAnimEnded(ValueAnimator a) {
-        if (freezeAnim == a) freezeAnim = null;
-    }
-
-    private void setBackdropBlur(float radius) {
-        backdropBlur = radius;
-        if (Build.VERSION.SDK_INT >= 31) {
-            // Nur „Blurred content“ mit eingeschaltetem Blur-Schalter weichzeichnet.
-            float r = Prefs.blurEnabled(this) && Prefs.background(this) == Prefs.BG_BLURRED ? radius : 0f;
-            backdrop.setRenderEffect(r > 0f
-                    ? RenderEffect.createBlurEffect(r, r, Shader.TileMode.CLAMP) : null);
-        }
-    }
-
-    /** Passende Farbe für den Hintergrund „Matching color“: aus Banner oder Symbol der App. */
-    private int matchColor(Tile tile) {
-        if (tile.banner == null) return tile.color != 0 ? tile.color : Color.rgb(48, 52, 60);
-        return AppRepository.backgroundFor(tile.banner);
-    }
-
-    private boolean matchingBackground() {
-        return Prefs.background(this) == Prefs.BG_MATCHING;
-    }
-
-    private int builtBackground = -1;
-
-    /**
      * tvOS (Screenshots des Nutzers): Oben auf den Favoriten liegen die Reihen darunter 28 px näher an der
      * Leiste (~24 px schauen hervor), heruntergescrollt ist der Abstand 70 px. Der Versatz läuft mit dem Scrollen aus.
      */
@@ -917,351 +706,6 @@ public final class HomeActivity extends Activity
             }
             scroll.animateTo(Math.max(0, y));
         });
-    }
-
-    private android.graphics.Bitmap backdropBmp;
-    private Object backdropSource;
-    /** Karte, von der man zuletzt in die Favoritenleiste heruntergekommen ist (-1 = keine). */
-    private int rememberedCard = -1;
-
-    /**
-     * Hintergrund weich überblenden statt hart wechseln (Wunsch des Nutzers). Jedes Bild wird erst auf
-     * dieselbe kleine Größe gebracht (mittig beschnitten), damit beim Überblenden nichts verzerrt.
-     */
-    private void setBackdrop(android.graphics.drawable.Drawable d) {
-        setBackdrop(d, null);
-    }
-
-    /**
-     * sourceKey: Adresse des Bildes, falls bekannt. Dasselbe Vorschaubild kommt mal in voller Größe, mal
-     * in 480 px (zwei verschiedene Bitmaps); ohne Adresse blendete der Hintergrund bei jedem Wechsel
-     * zwischen Karte und App neu über (B41).
-     */
-    private void setBackdrop(android.graphics.drawable.Drawable d, String sourceKey) {
-        Object key = sourceKey != null ? sourceKey : d instanceof android.graphics.drawable.BitmapDrawable
-                ? ((android.graphics.drawable.BitmapDrawable) d).getBitmap()
-                : d instanceof ColorDrawable ? (Object) ((ColorDrawable) d).getColor() : d;
-        if (key.equals(backdropSource)) return;
-        backdropSource = key;
-        int bw = 320, bh = 180;
-        android.graphics.Bitmap next = android.graphics.Bitmap.createBitmap(bw, bh, android.graphics.Bitmap.Config.ARGB_8888);
-        android.graphics.Canvas c = new android.graphics.Canvas(next);
-        int iw = d.getIntrinsicWidth(), ih = d.getIntrinsicHeight();
-        if (iw > 0 && ih > 0) {
-            float sc = Math.max(bw / (float) iw, bh / (float) ih);
-            int dw = Math.round(iw * sc), dh = Math.round(ih * sc);
-            int l = (bw - dw) / 2, t = (bh - dh) / 2;
-            android.graphics.Rect old = new android.graphics.Rect(d.getBounds());
-            d.setBounds(l, t, l + dw, t + dh);
-            d.draw(c);
-            d.setBounds(old);
-        } else {
-            android.graphics.Rect old = new android.graphics.Rect(d.getBounds());
-            d.setBounds(0, 0, bw, bh);
-            d.draw(c);
-            d.setBounds(old);
-        }
-        android.graphics.drawable.Drawable nd = new android.graphics.drawable.BitmapDrawable(getResources(), next);
-        if (backdropBmp == null) {
-            backdrop.setImageDrawable(nd);
-        } else {
-            // Ausgang ist der Hintergrund, wie er gerade zu sehen ist (auch mitten in einer Überblendung).
-            android.graphics.Bitmap from = android.graphics.Bitmap.createBitmap(bw, bh, android.graphics.Bitmap.Config.ARGB_8888);
-            android.graphics.drawable.Drawable cur = backdrop.getDrawable();
-            if (cur != null) {
-                android.graphics.Rect old = new android.graphics.Rect(cur.getBounds());
-                cur.setBounds(0, 0, bw, bh);
-                cur.draw(new android.graphics.Canvas(from));
-                cur.setBounds(old);
-            }
-            android.graphics.drawable.TransitionDrawable td = new android.graphics.drawable.TransitionDrawable(
-                    new android.graphics.drawable.Drawable[] {
-                            new android.graphics.drawable.BitmapDrawable(getResources(), from), nd});
-            td.setCrossFadeEnabled(true);
-            backdrop.setImageDrawable(td);
-            td.startTransition((int) Ui.ms(252));
-        }
-        backdropBmp = next;
-    }
-
-    private ValueAnimator flatColorAnim;
-    /** Banner auf der Farbfläche wartet, bis die Fläche ganz deckt (sonst sieht man seine Kanten). */
-    private boolean heroPending;
-
-    private void maybeShowHero() {
-        if (!heroPending || flatTarget <= 0f) return;
-        boolean ready = flatBg.getAlpha() >= 0.99f && scroll.getScrollY() == 0
-                && (flatColorAnim == null || !flatColorAnim.isRunning());
-        if (!ready) return;
-        heroPending = false;
-        hero.animate().cancel();
-        hero.animate().alpha(1f).setStartDelay(0).setDuration(Ui.ms(100)).start();
-    }
-
-    /** Ganzflächige Farbe ein- (Farbe) oder ausblenden (0); setzt die Bannerkarte zurück. */
-    private void setFlat(int color) {
-        if (color != 0) {
-            if (flatColorAnim != null) flatColorAnim.cancel();
-            android.graphics.drawable.Drawable bgd = flatBg.getBackground();
-            int from = bgd instanceof ColorDrawable ? ((ColorDrawable) bgd).getColor() : color;
-            if (flatTarget > 0f && flatBg.getAlpha() > 0.05f && from != color) {
-                // Farbe zur nächsten überblenden, statt zu springen.
-                flatColorAnim = ValueAnimator.ofArgb(from, color);
-                flatColorAnim.setDuration(Ui.ms(252));
-                flatColorAnim.addUpdateListener(an -> {
-                    flatBg.setBackgroundColor((int) an.getAnimatedValue());
-                    if (an.getAnimatedFraction() >= 1f) handler.post(this::maybeShowHero);
-                });
-                flatColorAnim.start();
-            } else {
-                flatBg.setBackgroundColor(color);
-            }
-            flatTarget = 1f;
-            flatBg.animate().alpha(scroll.getScrollY() == 0 ? 1f : flatBg.getAlpha()).setDuration(Ui.ms(196))
-                    .withEndAction(this::maybeShowHero).start();
-            return;
-        }
-        flatTarget = 0f;
-        flatBg.animate().alpha(0f).setDuration(Ui.ms(196)).start();
-        hero.setElevation(Ui.dp(this, 20));
-        hero.setClipToOutline(true);
-        heroLp.gravity = Gravity.END | Gravity.TOP;
-        heroLp.rightMargin = Ui.dp(this, SIDE_DP);
-        hero.setLayoutParams(heroLp);
-        ((View) heroTitle.getParent()).setVisibility(View.VISIBLE);
-    }
-
-    private void showInShelf(Tile tile) {
-        android.graphics.drawable.Drawable big = tile.banner != null ? banners.hero(tile) : null;
-        int edge = big != null ? banners.flatEdgeColor(big) : 0;
-        boolean hasContent = false;
-        if (tile.kind == Tile.APP && tile.pkg != null) {
-            List<ShelfContent.Item> cached = ShelfContent.cached(tile.pkg);
-            hasContent = cached != null && !cached.isEmpty();
-        }
-        // Nach dem Kontrollzentrum ist der Zwischenspeicher leer, die Karten stehen aber noch da (B43).
-        // Dann zählen sie als Inhalt: sonst kam die ganzflächige Randfarbe des Banners (Netflix weiß, RTL
-        // schwarz), obwohl Inhalte folgen (B53).
-        boolean keepContentBg = tile.key.equals(shelfKey) && cardRow != null && cardRow.getChildCount() > 0;
-        if (keepContentBg) hasContent = true;
-        if (big != null && edge != 0 && !hasContent) {
-            // Wie bei tvOS: ganzer Bildschirm in der Randfarbe des Banners, Banner groß und mittig oben,
-            // ohne Karte, Schatten und Titel – Banner und Fläche gehen ineinander über.
-            hero.setImageDrawable(big);
-            hero.setBackground(null);
-            hero.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            hero.setElevation(0);
-            hero.setClipToOutline(false);
-            // Höchstens 1,6-fach vergrößern (320-px-Banner → 512 px), sonst wirkt das Logo unscharf
-            // (Nutzer: 2,25-fach zu schlecht aufgelöst). Große Banner höchstens 846 px.
-            int w = Math.min(Ui.dp(this, 423), Math.round(big.getIntrinsicWidth() * 1.6f));
-            // Eigenes HD-Banner: wieder so groß wie früher (720 px), jetzt scharf.
-            if (banners.isHd(big)) w = Ui.dp(this, 360);
-            int padX = (Ui.dp(this, 423) - w) / 2;
-            int padY = Math.max(0, (Ui.dp(this, 238) - w * big.getIntrinsicHeight() / Math.max(1, big.getIntrinsicWidth())) / 2);
-            hero.setPadding(padX, padY, padX, padY);
-            heroLp.gravity = Gravity.CENTER_HORIZONTAL | Gravity.TOP;
-            heroLp.rightMargin = 0;
-            hero.setLayoutParams(heroLp);
-            // Logo erst einblenden, wenn die Farbfläche fertig ist; sonst sieht man die Kanten des
-            // Bannerrechtecks, solange die Fläche dahinter noch einblendet oder die Farbe wechselt.
-            android.graphics.drawable.Drawable fb = flatBg.getBackground();
-            boolean settled = flatTarget > 0f && flatBg.getAlpha() > 0.99f
-                    && fb instanceof ColorDrawable && ((ColorDrawable) fb).getColor() == edge
-                    && (flatColorAnim == null || !flatColorAnim.isRunning());
-            setFlat(edge);
-            hero.animate().cancel();
-            if (!settled || scroll.getScrollY() > 0) {
-                hero.setAlpha(0f);
-                heroPending = true;
-                maybeShowHero();
-            } else {
-                heroPending = false;
-                hero.setAlpha(1f);
-            }
-        } else if (big != null) {
-            hero.setImageDrawable(big);
-            hero.setBackground(null);
-            hero.setScaleType(ImageView.ScaleType.CENTER_CROP);
-            hero.setPadding(0, 0, 0, 0);
-        } else {
-            hero.setImageDrawable(tile.icon);
-            hero.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-            hero.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                    new int[] {lighter(tile.color), tile.color}));
-            int p = Ui.dp(this, 60);
-            hero.setPadding(p, p, p, p);
-        }
-        if (!(big != null && edge != 0 && !hasContent)) {
-            heroPending = false;
-            hero.animate().cancel();
-            hero.setAlpha(1f);
-        }
-        if (flatTarget > 0f && !(big != null && edge != 0 && !hasContent)) setFlat(0);
-        heroTitle.setText(tile.label);
-        ((View) heroTitle.getParent()).setVisibility(flatTarget > 0f ? View.INVISIBLE : View.VISIBLE);
-        String sub;
-        switch (tile.kind) {
-            case Tile.INPUT: sub = "TV input"; break;
-            case Tile.HIDDEN_APPS: sub = "Show or open apps you hid from the home screen"; break;
-            case Tile.SETTINGS: sub = "Best Seat settings"; break;
-            default: sub = tile.available ? "" : "Waiting for USB storage";
-        }
-        heroSub.setText(sub);
-        heroSub.setVisibility(sub.isEmpty() ? View.GONE : View.VISIBLE);
-        // Apps mit Inhalten: Hintergrund kommt aus dem ersten Inhalt (showContent). Vorher das Banner zu setzen,
-        // blendete bei jedem Wechsel zwischen Karte und App erst zum Banner und dann zurück (B41).
-        // Nach dem Kontrollzentrum ist der Zwischenspeicher leer, die Karten stehen aber noch da: Hintergrund
-        // dann nicht kurz aufs Banner wechseln lassen (B43).
-        if (matchingBackground()) {
-            int mc = matchColor(tile);
-            setBackdrop(new ColorDrawable(mc), "color:" + mc);
-        } else if (!hasContent) {
-            setBackdrop(tile.banner != null ? tile.banner : new ColorDrawable(tile.color));
-        }
-        updateShelfContent(tile);
-    }
-
-    // ---------------------------------------------------------------- Top-Shelf-Inhalte
-
-    /** Inhalte der App zeigen: sofort aus dem Zwischenspeicher, sonst kurz nach dem Fokus laden. */
-    private void updateShelfContent(Tile tile) {
-        if (pendingShelfLoad != null) handler.removeCallbacks(pendingShelfLoad);
-        boolean eligible = tile.kind == Tile.APP && tile.available && tile.pkg != null;
-        if (!eligible) {
-            showHero();
-            return;
-        }
-        List<ShelfContent.Item> cached = ShelfContent.cached(tile.pkg);
-        if (cached != null) {
-            showContent(tile, cached);
-            return;
-        }
-        if (!tile.key.equals(shelfKey)) showHero();
-        final Context app = getApplicationContext();
-        pendingShelfLoad = () -> shelfWorker.execute(() -> {
-            List<ShelfContent.Item> items = ShelfContent.load(app, tile.pkg);
-            handler.post(() -> {
-                if (!isDestroyed() && tile.key.equals(focusedKey) && currentTileView != null
-                        && currentTileView.hasFocus()) {
-                    showContent(tile, items);
-                }
-            });
-        });
-        handler.postDelayed(pendingShelfLoad, 250);
-    }
-
-    private void showHero() {
-        shelfKey = null;
-        if (heroGroup.getVisibility() == View.VISIBLE) return;
-        contentGroup.setVisibility(View.GONE);
-        cardRow.removeAllViews();
-        heroGroup.setAlpha(0f);
-        heroGroup.setVisibility(View.VISIBLE);
-        heroGroup.animate().alpha(1f).setDuration(Ui.ms(200)).start();
-    }
-
-    private void showContent(Tile tile, List<ShelfContent.Item> items) {
-        if (items.isEmpty()) {
-            showHero();
-            return;
-        }
-        boolean same = tile.key.equals(shelfKey) && cardRow.getChildCount() == items.size();
-        shelfKey = tile.key;
-        // Über den Karten nur die Art des Inhalts (z. B. „Continue watching“), nicht der App-Name (tvOS).
-        shelfApp.setText(sectionTitle(tile, items.get(0)));
-        shelfSection.setText("");
-        cardTitle.setText("");
-        if (heroGroup.getVisibility() == View.VISIBLE) {
-            heroGroup.setVisibility(View.GONE);
-            contentGroup.setAlpha(0f);
-            contentGroup.setVisibility(View.VISIBLE);
-            contentGroup.animate().alpha(1f).setDuration(Ui.ms(220)).start();
-            setFlat(0);
-        }
-        // Hintergrund: Bild des ersten Inhalts statt Banner (wie tvOS). Kommt man gerade von einer Karte herunter,
-        // bleibt deren Bild stehen; beim Hochgehen landet man wieder auf ihr (B42).
-        int bgIndex = same && rememberedCard >= 0 && rememberedCard < items.size() ? rememberedCard : 0;
-        String bgImage = items.get(bgIndex).image;
-        if (!matchingBackground()) Images.load(this, bgImage, 480, bmp -> {
-            if (bmp != null && tile.key.equals(focusedKey) && !matchingBackground()) setBackdrop(new android.graphics.drawable.BitmapDrawable(getResources(), bmp), bgImage);
-        });
-        if (same) return;
-        cardRow.removeAllViews();
-        cardScroll.scrollTo(0, 0);
-        // tvOS: 16:9-Karten 846x476 px, Abstand 48 px (2 nebeneinander).
-        int height = Ui.dp(this, 238);
-        int gap = Ui.dp(this, 24);
-        // Zwei breite Karten füllen genau die Breite der App-Reihe: links und rechts bündig (W84).
-        int rowWidth = getResources().getDisplayMetrics().widthPixels - 2 * Ui.dp(this, SIDE_DP);
-        int wide = (rowWidth - gap) / 2;
-        for (int i = 0; i < items.size(); i++) {
-            final ShelfContent.Item item = items.get(i);
-            float aspect = Math.max(0.66f, Math.min(1.78f, item.aspect));
-            int width = aspect >= 1.7f ? wide : Math.round(height * aspect);
-            final ShelfCard card = new ShelfCard(this, item, width, height);
-            card.setId(View.generateViewId());
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(width, height);
-            if (i > 0) lp.leftMargin = gap;
-            cardRow.addView(card, lp);
-            if (item.image != null) Images.into(this, item.image, width, card.image, card::showFallback);
-            if (currentTileView != null) card.setNextFocusDownId(currentTileView.getId());
-            if (i == 0) card.setNextFocusLeftId(card.getId());
-            card.setOnFocusChangeListener((v, has) -> {
-                card.focus(has, lastDx);
-                if (has) {
-                    rememberedCard = cardRow.indexOfChild(card);
-                    String t = item.title != null ? item.title : "";
-                    if (item.subtitle != null && !item.subtitle.isEmpty()) t += "  ·  " + item.subtitle;
-                    cardTitle.setText(t);
-                    shelfApp.setText(sectionTitle(tile, item));
-                    // Fokussierte Karte links ausrichten (wie tvOS), letzte Karten bleiben am Ende.
-                    cardScroll.smoothScrollTo(Math.max(0, card.getLeft() - cardScroll.getPaddingLeft()), 0);
-                    Bitmap bmp = Images.memory(item.image);
-                    if (bmp != null && !matchingBackground()) setBackdrop(new android.graphics.drawable.BitmapDrawable(getResources(), bmp), item.image);
-                    scroll.animateTo(0);
-                } else if (!cardRow.hasFocus()) {
-                    cardTitle.setText("");
-                }
-            });
-            card.setOnClickListener(v -> openItem(tile, item));
-        }
-        // Letzte Karte: Pfeil rechts bleibt stehen.
-        View last = cardRow.getChildAt(cardRow.getChildCount() - 1);
-        last.setNextFocusRightId(last.getId());
-    }
-
-    /** Kanalname neben dem App-Namen, aber nicht, wenn er nur den App-Namen wiederholt. */
-    /** Abschnittstitel über den Karten: Art des Inhalts; nur wenn die fehlt, der App-Name. */
-    private static String sectionTitle(Tile tile, ShelfContent.Item item) {
-        String section = item.section != null ? item.section.trim() : "";
-        return section.isEmpty() ? tile.label : section;
-    }
-
-    private static String sectionText(Tile tile, ShelfContent.Item item) {
-        String section = item.section != null ? item.section : "";
-        return section.trim().equalsIgnoreCase(tile.label.trim()) ? "" : section;
-    }
-
-    private void openItem(Tile tile, ShelfContent.Item item) {
-        if (item.intentUri != null) {
-            try {
-                Intent intent = Intent.parseUri(item.intentUri, Intent.URI_INTENT_SCHEME);
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                startActivity(intent);
-                return;
-            } catch (Exception e) {
-                Log.w(TAG, "shelf intent failed: " + item.intentUri, e);
-            }
-        }
-        launch(tile);
-    }
-
-    private static int lighter(int color) {
-        float[] hsv = new float[3];
-        Color.colorToHSV(color, hsv);
-        hsv[2] = Math.min(1f, hsv[2] + 0.15f);
-        return Color.HSVToColor(hsv);
     }
 
     // ---------------------------------------------------------------- Bildschirmschoner
@@ -1382,19 +826,16 @@ public final class HomeActivity extends Activity
         if (event.getAction() == KeyEvent.ACTION_DOWN && currentTileView != null && currentTileView.hasFocus()
                 && (code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_DPAD_DOWN
                 || code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT)) {
-            int remembered = rememberedCard;
-            rememberedCard = -1;
+            int remembered = topShelf.takeRememberedCard();
             int index = tileViews.indexOf(currentTileView);
             if (code == KeyEvent.KEYCODE_DPAD_UP && index >= 0 && index < Prefs.columns(this)
-                    && cardRow != null && cardRow.getChildCount() > 0 && cardRow.isShown()) {
-                int target = remembered >= 0 && remembered < cardRow.getChildCount() ? remembered : 0;
-                if (target == 0) cardScroll.scrollTo(0, 0);
-                cardRow.getChildAt(target).requestFocus();
+                    && topShelf.cardsShown()) {
+                topShelf.focusCard(remembered);
                 return true;
             }
         }
         // Pfeil hoch in der obersten App-Reihe, wenn der Top Shelf keine Karten hat: Kontrollzentrum (B15).
-        if (code == KeyEvent.KEYCODE_DPAD_UP && (cardRow == null || cardRow.getChildCount() == 0 || !cardRow.isShown())) {
+        if (code == KeyEvent.KEYCODE_DPAD_UP && !topShelf.cardsShown()) {
             int columns = Prefs.columns(this);
             for (int i = 0; i < tileViews.size() && i < columns; i++) {
                 if (!tileViews.get(i).hasFocus()) continue;
@@ -1403,7 +844,7 @@ public final class HomeActivity extends Activity
             }
         }
         // Pfeil hoch auf einer Top-Shelf-Karte: Kontrollzentrum (Wunsch des Nutzers, wie die Statuspille bei tvOS).
-        if (code == KeyEvent.KEYCODE_DPAD_UP && cardRow != null && cardRow.hasFocus()) {
+        if (code == KeyEvent.KEYCODE_DPAD_UP && topShelf.cardsFocused()) {
             if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) openControlCenter();
             return true;
         }
@@ -1672,7 +1113,7 @@ public final class HomeActivity extends Activity
         }
     }
 
-    private void launch(Tile tile) {
+    void launch(Tile tile) {
         boolean reduce = Prefs.reduceMotion(this);
         if (reduce) zoomBmp = null;
         boolean zoom = zoomBmp != null;
