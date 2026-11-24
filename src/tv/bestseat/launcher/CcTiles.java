@@ -54,6 +54,8 @@ final class CcTiles {
     private static final int COLS = 2;
     static final float GAP_DP = 8.25f;
     private static final float TILE_RADIUS_DP = 12f;
+    /** Große Kachel bei Glass: deutlich runder als die 12 dp ohne Glass. */
+    private static final float BIG_GLASS_RADIUS_DP = 24f;
     private static final float FOCUS_SCALE = 1.05f;
     private static final float TILE_DP = 47.5f;
 
@@ -137,8 +139,9 @@ final class CcTiles {
         b.setFocusable(true);
         b.setClickable(true);
         b.setContentDescription(title);
-        float r = Ui.dp(cc, TILE_RADIUS_DP);
-        b.setBackground(Ui.tileBg(Ui.ROW, r));
+        // Glass wie tvOS 26: kleine Kacheln rund.
+        float r = LiquidGlass.on ? Ui.dp(cc, 999) : Ui.dp(cc, TILE_RADIUS_DP);
+        b.setBackground(bg(false, r, b));
         Ui.tileShadow(b);
         final String id = buildingId;
         ControlIcons.Icon icon = new ControlIcons.Icon(id, iconColor(id, false));
@@ -151,7 +154,7 @@ final class CcTiles {
         int is = Ui.dp(cc, 22);
         b.addView(iv, new FrameLayout.LayoutParams(is, is, Gravity.CENTER));
         b.setOnFocusChangeListener((v, has) -> {
-            v.setBackground(Ui.tileBg(has ? Ui.ROW_FOCUSED : Ui.ROW, r));
+            v.setBackground(bg(has, r, v));
             icon.setColor(iconColor(id, has));
             v.animate().scaleX(has ? FOCUS_SCALE : 1f).scaleY(has ? FOCUS_SCALE : 1f)
                     .translationZ(has ? Ui.dp(cc, 10) : 0).setDuration(Ui.ms(140)).start();
@@ -196,8 +199,9 @@ final class CcTiles {
         b.setPadding(p, big ? Ui.dp(cc, 6) : 0, p, big ? Ui.dp(cc, 6) : 0);
         b.setFocusable(true);
         b.setClickable(true);
-        float r = Ui.dp(cc, TILE_RADIUS_DP);
-        b.setBackground(Ui.tileBg(Ui.ROW, r));
+        // Glass wie tvOS 26: halbe Kacheln als Pille, die große stärker gerundet.
+        float r = !LiquidGlass.on ? Ui.dp(cc, TILE_RADIUS_DP) : big ? Ui.dp(cc, BIG_GLASS_RADIUS_DP) : Ui.dp(cc, 999);
+        b.setBackground(bg(false, r, b));
         Ui.tileShadow(b);
         final String id = buildingId;
         ControlIcons.Icon icon = new ControlIcons.Icon(id, iconColor(id, false));
@@ -221,7 +225,7 @@ final class CcTiles {
         b.addView(t, big ? new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT) : new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         b.setOnFocusChangeListener((v, has) -> {
-            v.setBackground(Ui.tileBg(has ? Ui.ROW_FOCUSED : Ui.ROW, r));
+            v.setBackground(bg(has, r, v));
             t.setTextColor(has ? Ui.TEXT_ON_FOCUS : Ui.TEXT);
             icon.setColor(iconColor(id, has));
             // Zu langer Text läuft auf der fokussierten Kachel durch (B12).
@@ -232,5 +236,16 @@ final class CcTiles {
         });
         b.setOnClickListener(v -> action.run());
         return b;
+    }
+
+    /** Kachelfläche; bei Glass mit dem unscharfen Hintergrund darunter (Milchglas), fokussiert weiß. */
+    private android.graphics.drawable.Drawable bg(boolean focused, float r, View host) {
+        if (!focused && LiquidGlass.on && cc.glassBackdrop != null) {
+            LiquidGlass.Rounded d = new LiquidGlass.Rounded(LiquidGlass.density(), 1f).backdrop(cc.glassBackdrop, host);
+            d.setColor(Ui.glassTint());
+            d.setCornerRadius(r);
+            return d;
+        }
+        return Ui.tileBg(focused ? Ui.ROW_FOCUSED : Ui.ROW, r);
     }
 }

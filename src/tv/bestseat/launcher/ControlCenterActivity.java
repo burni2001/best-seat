@@ -41,6 +41,8 @@ public final class ControlCenterActivity extends Activity {
     private static final float PANEL_RADIUS_DP = 23f;
     /** Weichgezeichnetes Abbild der Startseite, von HomeActivity vor dem Start gesetzt. */
     static android.graphics.Bitmap homeBlur;
+    /** Glass: unscharfes Abbild der Startseite, jede Kachel zeigt ihren Ausschnitt davon (Milchglas). */
+    android.graphics.Bitmap glassBackdrop;
 
     final Handler handler = new Handler(Looper.getMainLooper());
     final Runnable idleClose = this::close;
@@ -82,6 +84,7 @@ public final class ControlCenterActivity extends Activity {
         dim = new View(this);
         android.graphics.Bitmap blurred = homeBlur;
         homeBlur = null;
+        glassBackdrop = LiquidGlass.on ? blurred : null;
         // Wie tvOS: Der Bildschirm um das Kontrollzentrum bleibt unverändert, kein Abdunkeln mehr (B48).
         // Die Ebene bleibt als Klickfläche zum Schließen.
         dim.setBackgroundColor(Color.TRANSPARENT);
@@ -134,6 +137,10 @@ public final class ControlCenterActivity extends Activity {
         body.setClipToPadding(false);
         body.setPadding(pad + Ui.dp(this, 6), pad + Ui.dp(this, 6), pad + Ui.dp(this, 6), Ui.dp(this, 3.5f));
         scroll.addView(body);
+        // Glas-Kacheln zeigen den Hintergrund an ihrer Stelle: beim Scrollen neu zeichnen.
+        scroll.setOnScrollChangeListener((v, x, y, ox, oy) -> {
+            if (glassBackdrop != null) refreshGlass(body);
+        });
         // Höhe nach Inhalt; passt er nicht, begrenzt der Kasten ihn auf den Bildschirm und die Liste scrollt.
         panel.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT));
@@ -175,11 +182,21 @@ public final class ControlCenterActivity extends Activity {
         fadeIn.setDuration(Ui.ms(reduceMotion ? 260 : 160));
         fadeIn.start();
         panel.animate().scaleX(1f).scaleY(1f).translationY(0f).setInterpolator(new DecelerateInterpolator(1.8f))
+                .setUpdateListener(glassBackdrop != null ? a -> refreshGlass(body) : null)
                 .setDuration(Ui.ms(480)).start();
         // Pille der Startseite erst ausblenden, wenn die eigene gezeichnet ist.
         // Das System blendet das durchsichtige Fenster selbst kurz ein (am TV gemessen gut 200 ms); bis es
         // ganz da ist, liegen beide Pillen genau übereinander. onEnterAnimationComplete kommt hier nicht.
         handler.postDelayed(handoff, 280);
+    }
+
+    /** Alle Kacheln neu zeichnen, damit ihr Milchglas der neuen Lage folgt. */
+    static void refreshGlass(View v) {
+        v.invalidate();
+        if (v instanceof ViewGroup) {
+            ViewGroup g = (ViewGroup) v;
+            for (int i = 0; i < g.getChildCount(); i++) refreshGlass(g.getChildAt(i));
+        }
     }
 
     /** W83: Kasten nur ein- und ausblenden, ohne Trichter. */

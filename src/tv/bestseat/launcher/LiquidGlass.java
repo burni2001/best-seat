@@ -117,20 +117,61 @@ final class LiquidGlass {
         private final float density;
         private final float strength;
         private final RectF box = new RectF();
+        private final Path clip = new Path();
+        private final int[] loc = new int[2];
+        private final Paint image = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.ANTI_ALIAS_FLAG);
+        private android.graphics.Bitmap backdrop;
+        private android.view.View host;
 
         Rounded(float density, float strength) {
             this.density = density;
             this.strength = strength;
         }
 
+        /**
+         * Milchglas: das weichgezeichnete Abbild des Bildschirms (bildschirmgroß gedacht, klein gerechnet),
+         * genau der Ausschnitt hinter host, unter die Tönung gelegt.
+         */
+        Rounded backdrop(android.graphics.Bitmap shot, android.view.View host) {
+            this.backdrop = shot;
+            this.host = host;
+            return this;
+        }
+
         @Override
         public void draw(Canvas canvas) {
-            super.draw(canvas);
-            if (!on) return;
             box.set(getBounds());
             float radius = getCornerRadius();
             radius = Math.min(radius, Math.min(box.width(), box.height()) / 2f);
+            if (on && backdrop != null && host != null) drawBackdrop(canvas, radius);
+            super.draw(canvas);
+            if (!on) return;
             LiquidGlass.draw(canvas, box, radius, density, strength);
+        }
+
+        private void drawBackdrop(Canvas canvas, float radius) {
+            android.view.View root = host.getRootView();
+            if (!(host.getParent() instanceof android.view.View) || root == null || root.getWidth() <= 0) return;
+            // Lage ohne die eigene Fokus-Vergrößerung der Kachel: Die skaliert das Glas mit, wie eine Linse.
+            android.view.View parent = (android.view.View) host.getParent();
+            parent.getLocationInWindow(loc);
+            float sx = 1f, sy = 1f;
+            for (android.view.ViewParent p = (android.view.ViewParent) parent; p instanceof android.view.View; p = p.getParent()) {
+                sx *= ((android.view.View) p).getScaleX();
+                sy *= ((android.view.View) p).getScaleY();
+            }
+            if (sx <= 0f || sy <= 0f) return;
+            float x = loc[0] + (host.getLeft() - parent.getScrollX()) * sx;
+            float y = loc[1] + (host.getTop() - parent.getScrollY()) * sy;
+            clip.reset();
+            clip.addRoundRect(box, radius, radius, Path.Direction.CW);
+            canvas.save();
+            canvas.clipPath(clip);
+            canvas.translate(-x / sx, -y / sy);
+            canvas.scale(root.getWidth() / (float) backdrop.getWidth() / sx,
+                    root.getHeight() / (float) backdrop.getHeight() / sy);
+            canvas.drawBitmap(backdrop, 0, 0, image);
+            canvas.restore();
         }
     }
 }

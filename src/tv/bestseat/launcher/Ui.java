@@ -196,10 +196,13 @@ final class Ui {
      */
     static GradientDrawable tileBg(int color, float radiusPx) {
         if (!LiquidGlass.on) return rounded(color, radiusPx);
-        if (color == ROW) {
-            return roundedGlass(light ? Color.argb(105, 255, 255, 255) : Color.argb(62, 150, 190, 235), radiusPx, 1f);
-        }
+        if (color == ROW) return roundedGlass(glassTint(), radiusPx, 1f);
         return roundedGlass(color, radiusPx, 0.45f);
+    }
+
+    /** Tönung einer Glas-Kachel (über dem unscharfen Hintergrund, falls vorhanden). */
+    static int glassTint() {
+        return light ? Color.argb(105, 255, 255, 255) : Color.argb(62, 150, 190, 235);
     }
 
     /** Wie evenShadow, bei Glass ohne Schatten: Er schiene durch die durchsichtige Kachel als dunkler Fleck. */
