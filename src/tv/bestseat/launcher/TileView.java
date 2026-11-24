@@ -30,6 +30,35 @@ final class TileView extends FrameLayout {
     private final float radius;
     /** Beim Abbild für den Start-Zoom: ohne Lichtkante, sonst steht ein Schein auf der Fläche in Kachelfarbe. */
     private boolean bare;
+    /** Glass: Lichtkante an (nur mit Fokus) und Stand des Lichtlaufs 0..1 (-1 = keiner). */
+    private boolean edgeOn;
+    private float sweep = -1f;
+    private ValueAnimator sweepAnim;
+
+    private void glassEdge(boolean focused) {
+        if (!LiquidGlass.on || tile.kind == Tile.FOLDER) return;
+        if (sweepAnim != null) sweepAnim.cancel();
+        sweepAnim = null;
+        edgeOn = focused;
+        sweep = -1f;
+        if (focused && !Prefs.reduceMotion(getContext())) {
+            // Licht läuft unten von links nach rechts und gleichzeitig oben von rechts nach links.
+            ValueAnimator a = ValueAnimator.ofFloat(0f, 1f);
+            a.setDuration(Ui.ms(1100));
+            a.setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator());
+            a.addUpdateListener(an -> {
+                sweep = (float) an.getAnimatedValue();
+                invalidate();
+            });
+            a.addListener(new AnimEnd(() -> {
+                sweep = -1f;
+                invalidate();
+            }));
+            sweepAnim = a;
+            a.start();
+        }
+        invalidate();
+    }
 
     /** Kachel ohne Lichtkante und Glanzstreifen auf canvas zeichnen (Bild für den Start-Zoom). */
     void drawBare(android.graphics.Canvas canvas) {
@@ -114,9 +143,11 @@ final class TileView extends FrameLayout {
     protected void dispatchDraw(android.graphics.Canvas canvas) {
         super.dispatchDraw(canvas);
         // Glass: leichte Lichtkante auf App-Kacheln (Ordner haben ihr eigenes Glas).
-        if (LiquidGlass.on && tile.kind != Tile.FOLDER && !bare) {
+        // Nur auf der fokussierten Kachel (Wunsch des Nutzers), beim Fokus mit einem Lichtlauf entlang der Kanten.
+        if (LiquidGlass.on && tile.kind != Tile.FOLDER && !bare && edgeOn) {
             edgeBox.set(0, 0, getWidth(), getHeight());
             LiquidGlass.edge(canvas, edgeBox, radius, LiquidGlass.density(), 0.5f);
+            if (sweep >= 0f) LiquidGlass.sweep(canvas, edgeBox, radius, LiquidGlass.density(), sweep);
         }
     }
 
@@ -194,6 +225,7 @@ final class TileView extends FrameLayout {
     void focus(boolean focused, int dx, int dy) {
         float dp = getResources().getDisplayMetrics().density;
         animate().cancel();
+        glassEdge(focused);
         if (focused) {
             setRotationY(dx * 9f);
             setRotationX(-dy * 9f);

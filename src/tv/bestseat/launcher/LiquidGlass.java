@@ -57,6 +57,33 @@ final class LiquidGlass {
     }
 
     /**
+     * Lichtlauf über die Kante (Fokus einer App-Kachel): ein heller Fleck läuft unten von links nach rechts,
+     * gleichzeitig einer oben von rechts nach links. phase 0..1, blendet am Anfang und Ende weich ein und aus.
+     */
+    static void sweep(Canvas c, RectF r, float radius, float density, float phase) {
+        if (r.width() <= 0 || r.height() <= 0) return;
+        int a = Math.round(235 * (float) Math.sin(Math.PI * Math.max(0f, Math.min(1f, phase))));
+        if (a <= 0) return;
+        Path shape = new Path();
+        shape.addRoundRect(r, radius, radius, Path.Direction.CW);
+        float spot = Math.max(r.width(), r.height()) * 0.4f;
+        float[][] spots = {{r.left + r.width() * phase, r.bottom}, {r.right - r.width() * phase, r.top}};
+        c.save();
+        c.clipPath(shape);
+        for (float[] s : spots) {
+            GLOW.setStrokeWidth(10f * density);
+            GLOW.setShader(new android.graphics.RadialGradient(s[0], s[1], spot,
+                    Color.argb(Math.round(a * 0.3f), 255, 255, 255), Color.TRANSPARENT, Shader.TileMode.CLAMP));
+            c.drawPath(shape, GLOW);
+            RIM.setStrokeWidth(Math.max(1f, 1.6f * density) * 2f);
+            RIM.setShader(new android.graphics.RadialGradient(s[0], s[1], spot,
+                    Color.argb(a, 255, 255, 255), Color.TRANSPARENT, Shader.TileMode.CLAMP));
+            c.drawPath(shape, RIM);
+        }
+        c.restore();
+    }
+
+    /**
      * Wie die Vorlagen des Nutzers: kein gleich breiter Innenrahmen, sondern Licht, das nur an den
      * Kanten oben links und (schwächer) unten rechts auf das Glas fällt und an den Seiten fast verschwindet.
      * Dazu ein weicher Saum nach innen an denselben Stellen und ein schwacher Glanz oben.
