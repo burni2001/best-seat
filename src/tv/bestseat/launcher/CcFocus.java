@@ -50,7 +50,7 @@ final class CcFocus {
             else if (index == 0) right = false;
             else return null;
         } else {
-            right = ControlCenterActivity.SIDE_COLUMN.equals(((View) from.getParent()).getTag());
+            right = CcTiles.SIDE_COLUMN.equals(((View) from.getParent()).getTag());
             if (!right) return null;
         }
         int[] f = new int[2];

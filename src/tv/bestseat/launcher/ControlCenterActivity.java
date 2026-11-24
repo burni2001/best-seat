@@ -42,15 +42,9 @@ public final class ControlCenterActivity extends Activity {
     // Maße exakt nach dem tvOS-Kontrollzentrum (Design/control center.png, 3024 px Bildbreite = 960 dp):
     // Kachel 150 px, Abstand 26 px, Rand 37 px, Kasten 754 px (quadratisch), Radien Kachel 37 px, Kasten 72 px.
     private static final float PANEL_DP = 238.75f;
-    /** Kacheln je Reihe: höchstens 2 (B12), Kasten nur so hoch wie nötig (W16). */
-    private static final int COLS = 2;
-    private static final float GAP_DP = 8.25f;
     private static final float PANEL_RADIUS_DP = 23f;
-    private static final float TILE_RADIUS_DP = 12f;
-    private static final float FOCUS_SCALE = 1.05f;
     /** Weichgezeichnetes Abbild der Startseite, von HomeActivity vor dem Start gesetzt. */
     static android.graphics.Bitmap homeBlur;
-    private static final float TILE_DP = 47.5f;
 
     final Handler handler = new Handler(Looper.getMainLooper());
     final Runnable idleClose = this::close;
@@ -59,6 +53,7 @@ public final class ControlCenterActivity extends Activity {
     LinearLayout body;
     StatusPill pill;
     private final CcProfilePage profile = new CcProfilePage(this);
+    private final CcTiles cells = new CcTiles(this);
     /** Höhe des Kastens mit den Kacheln; die Profilseite übernimmt sie. */
     int mainPanelHeight;
     /** Profil gewechselt ohne Neustart: beim Schließen die Startseite neu laden. */
@@ -329,8 +324,8 @@ public final class ControlCenterActivity extends Activity {
         }
         // W90: Pfeil links vom Schalter-Symbol in der Pille auf die große Kachel (statt schließen).
         if (code == KeyEvent.KEYCODE_DPAD_LEFT && body.getTag() == null && pill.controls != null
-                && pill.controls.isFocused() && sideColumn != null && sideColumn.getParent() instanceof ViewGroup) {
-            View big = ((ViewGroup) sideColumn.getParent()).getChildAt(0);
+                && pill.controls.isFocused() && cells.sideColumn() != null && cells.sideColumn().getParent() instanceof ViewGroup) {
+            View big = ((ViewGroup) cells.sideColumn().getParent()).getChildAt(0);
             if (big != null && big.isFocusable()) {
                 if (event.getAction() == KeyEvent.ACTION_DOWN) big.requestFocus();
                 return true;
@@ -376,7 +371,7 @@ public final class ControlCenterActivity extends Activity {
         if (body.getTag() != null && !String.valueOf(body.getTag()).startsWith("profile")) return true;
         // Die rechte Spalte neben der großen Kachel ist nicht der linke Rand.
         return focused.getParent() instanceof LinearLayout
-                && !SIDE_COLUMN.equals(((LinearLayout) focused.getParent()).getTag())
+                && !CcTiles.SIDE_COLUMN.equals(((LinearLayout) focused.getParent()).getTag())
                 && ((LinearLayout) focused.getParent()).getChildAt(0) == focused;
     }
 
@@ -441,21 +436,16 @@ public final class ControlCenterActivity extends Activity {
         body.removeAllViews();
         body.setTag(null);
         pill.setSelected("controls");
-        icons.clear();
-        tiles.clear();
         boolean vpn = vpnConnected();
-        curRow = null;
-        sideColumn = null;
-        cellIndex = 0;
         View first = null;
         // Reihenfolge und Sichtbarkeit aus den Einstellungen (W12).
         java.util.Set<String> hidden = Prefs.controlHidden(this);
         // tvOS: große Kachel mit zwei daneben, darunter eine Reihe mit zwei normalen Kacheln, ganz unten
         // kleine quadratische Symbol-Kacheln (vier je Reihe). Ab der sechsten Kachel also klein.
-        smallFrom = 5;
+        cells.reset(5);
         for (String id : Prefs.controlOrder(this)) {
             if (hidden.contains(id)) continue;
-            buildingId = id;
+            cells.building(id);
             View v = addItem(id, vpn);
             v.setTag(id);
             v.setOnLongClickListener(x -> {
@@ -466,9 +456,9 @@ public final class ControlCenterActivity extends Activity {
             if (first == null || id.equals(focusId)) first = v;
         }
         // Weniger als drei Kacheln: rechte Spalte bleibt leer, die große Kachel behält ihre Höhe.
-        fillRow();
+        cells.fillRow();
         if (first != null) first.requestFocus();
-        setActive(ControlItems.VPN, vpn);
+        cells.setActive(ControlItems.VPN, vpn);
         queryHueState(0);
     }
 
@@ -476,23 +466,6 @@ public final class ControlCenterActivity extends Activity {
 
     private static final ComponentName HUE_RECEIVER =
             new ComponentName(Companions.HUESYNC, Companions.HUESYNC + ".ControlReceiver");
-    private final java.util.Map<String, ControlIcons.Icon> icons = new java.util.HashMap<>();
-    private final java.util.Map<String, View> tiles = new java.util.HashMap<>();
-    private final java.util.Set<String> active = new java.util.HashSet<>();
-
-    private int iconColor(String id, boolean focused) {
-        if (active.contains(id)) return Ui.ACCENT;
-        return focused ? Ui.TEXT_ON_FOCUS : Ui.TEXT;
-    }
-
-    private void setActive(String id, boolean on) {
-        if (on) active.add(id);
-        else active.remove(id);
-        ControlIcons.Icon icon = icons.get(id);
-        View tile = tiles.get(id);
-        if (icon != null) icon.setColor(iconColor(id, tile != null && tile.isFocused()));
-    }
-
     /** Ambilight / Hue Sync im Hintergrund schalten (App Ambience) und den Zustand nachfragen. */
     private void toggleHue(String id, String action) {
         try {
@@ -502,14 +475,14 @@ public final class ControlCenterActivity extends Activity {
             return;
         }
         // Sofort umfärben, die Antwort der App bestätigt oder korrigiert es.
-        setActive(id, !active.contains(id));
+        cells.setActive(id, !cells.isActive(id));
         queryHueState(ControlItems.AMBILIGHT.equals(id) ? 2500 : 700);
         queryHueState(5000);
     }
 
     /** Zustand von Hue Sync und Ambilight bei der App Ambience abfragen (ab Hue Sync 1.9.7). */
     private void queryHueState(long delayMs) {
-        if (!tiles.containsKey(ControlItems.AMBILIGHT) && !tiles.containsKey(ControlItems.HUE_SYNC)) return;
+        if (!cells.has(ControlItems.AMBILIGHT) && !cells.has(ControlItems.HUE_SYNC)) return;
         handler.postDelayed(() -> {
             if (isFinishing()) return;
             try {
@@ -535,8 +508,8 @@ public final class ControlCenterActivity extends Activity {
             for (String part : data.split(";")) {
                 String[] kv = part.split("=");
                 if (kv.length != 2 || "?".equals(kv[1])) continue;
-                if ("sync".equals(kv[0])) a.setActive(ControlItems.HUE_SYNC, "1".equals(kv[1]));
-                if ("ambilight".equals(kv[0])) a.setActive(ControlItems.AMBILIGHT, "1".equals(kv[1]));
+                if ("sync".equals(kv[0])) a.cells.setActive(ControlItems.HUE_SYNC, "1".equals(kv[1]));
+                if ("ambilight".equals(kv[0])) a.cells.setActive(ControlItems.AMBILIGHT, "1".equals(kv[1]));
             }
         }
     }
@@ -632,35 +605,35 @@ public final class ControlCenterActivity extends Activity {
     private View addItem(String id, boolean vpn) {
         switch (id) {
             case ControlItems.SCREENSAVER:
-                return cell("Screensaver", "Start now", () -> launch(new Intent(this, ScreensaverActivity.class)));
+                return cells.cell("Screensaver", "Start now", () -> launch(new Intent(this, ScreensaverActivity.class)));
             case ControlItems.AMBILIGHT:
                 // Schalten per Broadcast: die Leiste bleibt offen, das Symbol wird blau, wenn an.
-                return cell("Ambilight", "On / off", () -> toggleHue(ControlItems.AMBILIGHT, Companions.HUESYNC + ".AMBILIGHT"));
+                return cells.cell("Ambilight", "On / off", () -> toggleHue(ControlItems.AMBILIGHT, Companions.HUESYNC + ".AMBILIGHT"));
             case ControlItems.HUE_SYNC:
-                return cell("Ambience", "On / off", () -> toggleHue(ControlItems.HUE_SYNC, Companions.HUESYNC + ".TOGGLE"));
+                return cells.cell("Ambience", "On / off", () -> toggleHue(ControlItems.HUE_SYNC, Companions.HUESYNC + ".TOGGLE"));
             case ControlItems.INPUTS:
-                return cell("Inputs", "HDMI and devices", this::showInputs);
+                return cells.cell("Inputs", "HDMI and devices", this::showInputs);
             case ControlItems.PICTURE:
-                return cell("Picture", "Picture settings", () -> launch(PictureSettingsActivity.fresh(new Intent("android.settings.PICTURE_ACTIVITY"))));
+                return cells.cell("Picture", "Picture settings", () -> launch(PictureSettingsActivity.fresh(new Intent("android.settings.PICTURE_ACTIVITY"))));
             case ControlItems.SOUND:
-                return cell("Sound", "Sound and output", () -> launch(PictureSettingsActivity.fresh(new Intent("android.settings.SOUND_SETTINGS"))));
+                return cells.cell("Sound", "Sound and output", () -> launch(PictureSettingsActivity.fresh(new Intent("android.settings.SOUND_SETTINGS"))));
             case ControlItems.APP_SWITCHER:
                 // Eigener App Switcher im Launcher (seit 0.6.0, vorher eigene App).
-                return cell("App Switcher", "Recent apps", () -> launch(new Intent(this,
+                return cells.cell("App Switcher", "Recent apps", () -> launch(new Intent(this,
                         tv.bestseat.launcher.switcher.SwitcherActivity.class)));
             case ControlItems.VPN:
-                return cell(vpn ? "VPN on" : "VPN off", "", vpn ? this::confirmVpnOff : this::openVpnApp);
+                return cells.cell(vpn ? "VPN on" : "VPN off", "", vpn ? this::confirmVpnOff : this::openVpnApp);
             case ControlItems.ALL_APPS:
-                return cell("All Apps", "Every app in one list", () -> launch(new Intent(this,
+                return cells.cell("All Apps", "Every app in one list", () -> launch(new Intent(this,
                         tv.bestseat.launcher.allapps.AllAppsActivity.class)));
             case ControlItems.RESTART:
                 // Neustart-Dialog von Philips (exportiert, fragt selbst nach), W24.
-                return cell("Restart", "Restart the TV", () -> launch(new Intent("org.droidtv.intent.action.CONFIRM_REBOOT")
+                return cells.cell("Restart", "Restart the TV", () -> launch(new Intent("org.droidtv.intent.action.CONFIRM_REBOOT")
                         .setComponent(new ComponentName("org.droidtv.tvsystemui", "org.droidtv.tvsystemui.RCRebootActivity"))));
             case ControlItems.SETTINGS:
-                return cell("TV Settings", "Android settings", () -> launch(PictureSettingsActivity.fresh(new Intent("android.settings.SETTINGS"))));
+                return cells.cell("TV Settings", "Android settings", () -> launch(PictureSettingsActivity.fresh(new Intent("android.settings.SETTINGS"))));
             default:
-                return cell("Settings", "Launcher settings", () -> launch(new Intent(this, SettingsActivity.class)));
+                return cells.cell("Settings", "Launcher settings", () -> launch(new Intent(this, SettingsActivity.class)));
         }
     }
 
@@ -730,169 +703,6 @@ public final class ControlCenterActivity extends Activity {
         return false;
     }
 
-    // ---------------------------------------------------------------- Bausteine
-
-    private LinearLayout curRow;
-    /** Laufende Nummer der Kachel auf der Hauptseite; 0 = große Kachel links oben (W29). */
-    private int cellIndex;
-    /** Ab diesem Index kleine Symbol-Kacheln (vier in einer Reihe). */
-    private int smallFrom = Integer.MAX_VALUE;
-    private static final int SMALL_COUNT = 4;
-    /** Rechte Spalte neben der großen Kachel (Kacheln 1 und 2). */
-    private LinearLayout sideColumn;
-    /** ID der Kachel, die gerade gebaut wird (für ihr Symbol). */
-    private String buildingId;
-
-    /**
-     * Nächste Kachel. Wie bei tvOS: die erste ist doppelt so hoch, rechts daneben stehen
-     * die nächsten zwei übereinander, danach Reihen mit COLS Kacheln.
-     */
-    private View cell(String title, String sub, Runnable action) {
-        int index = cellIndex++;
-        if (body.getTag() == null && index == 0) {
-            LinearLayout top = pairRow();
-            View big = button(title, action, true);
-            top.addView(big, new LinearLayout.LayoutParams(0, Ui.dp(this, 2 * TILE_DP + GAP_DP), 1f));
-            sideColumn = new LinearLayout(this);
-            sideColumn.setOrientation(LinearLayout.VERTICAL);
-            sideColumn.setClipChildren(false);
-            sideColumn.setTag(SIDE_COLUMN);
-            LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(0, Ui.dp(this, 2 * TILE_DP + GAP_DP), 1f);
-            slp.leftMargin = Ui.dp(this, GAP_DP);
-            top.addView(sideColumn, slp);
-            curRow = null;
-            return big;
-        }
-        if (body.getTag() == null && index <= 2 && sideColumn != null) {
-            View b = button(title, action, false);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                    Ui.dp(this, TILE_DP));
-            if (index == 2) lp.topMargin = Ui.dp(this, GAP_DP);
-            sideColumn.addView(b, lp);
-            return b;
-        }
-        if (body.getTag() == null && index >= smallFrom) {
-            if ((index - smallFrom) % SMALL_COUNT == 0) curRow = pairRow();
-            View b = smallButton(title, action);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, Ui.dp(this, SMALL_DP), 1f);
-            if (curRow.getChildCount() > 0) lp.leftMargin = Ui.dp(this, GAP_DP);
-            curRow.addView(b, lp);
-            return b;
-        }
-        if (curRow == null || curRow.getChildCount() >= COLS) curRow = pairRow();
-        View b = button(title, action, false);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, Ui.dp(this, TILE_DP), 1f);
-        if (curRow.getChildCount() > 0) lp.leftMargin = Ui.dp(this, GAP_DP);
-        curRow.addView(b, lp);
-        return b;
-    }
-
-    static final String SIDE_COLUMN = "side";
-    private static final float SMALL_DP = TILE_DP;
-
-    /** Kleine quadratische Kachel nur mit Symbol (tvOS-Kontrollzentrum, unterste Reihe). */
-    private View smallButton(String title, Runnable action) {
-        FrameLayout b = new FrameLayout(this);
-        b.setFocusable(true);
-        b.setClickable(true);
-        b.setContentDescription(title);
-        float r = Ui.dp(this, TILE_RADIUS_DP);
-        b.setBackground(Ui.rounded(Ui.ROW, r));
-        Ui.evenShadow(b);
-        final String id = buildingId;
-        ControlIcons.Icon icon = new ControlIcons.Icon(id, iconColor(id, false));
-        if (id != null) {
-            icons.put(id, icon);
-            tiles.put(id, b);
-        }
-        android.widget.ImageView iv = new android.widget.ImageView(this);
-        iv.setImageDrawable(icon);
-        int is = Ui.dp(this, 22);
-        b.addView(iv, new FrameLayout.LayoutParams(is, is, Gravity.CENTER));
-        b.setOnFocusChangeListener((v, has) -> {
-            v.setBackground(Ui.rounded(has ? Ui.ROW_FOCUSED : Ui.ROW, r));
-            icon.setColor(iconColor(id, has));
-            v.animate().scaleX(has ? FOCUS_SCALE : 1f).scaleY(has ? FOCUS_SCALE : 1f)
-                    .translationZ(has ? Ui.dp(this, 10) : 0).setDuration(Ui.ms(140)).start();
-        });
-        b.setOnClickListener(v -> action.run());
-        return b;
-    }
-
-    /** Letzte Reihe mit leeren Plätzen auffüllen, damit die Kacheln gleich breit bleiben. */
-    private void fillRow() {
-        // Reihe der kleinen Kacheln auf vier auffüllen, sonst auf zwei.
-        int target = cellIndex > smallFrom ? SMALL_COUNT : COLS;
-        while (curRow != null && curRow.getChildCount() < target) {
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, 1, 1f);
-            lp.leftMargin = Ui.dp(this, GAP_DP);
-            curRow.addView(new View(this), lp);
-        }
-    }
-
-    private LinearLayout pairRow() {
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setClipChildren(false);
-        row.setClipToPadding(false);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.bottomMargin = Ui.dp(this, GAP_DP);
-        body.addView(row, lp);
-        return row;
-    }
-
-    /**
-     * Kachel mit Symbol und Titel (W31). Normal: Symbol links neben dem Titel. Groß: Symbol oben,
-     * Titel unten links (wie die große Kachel im tvOS-Kontrollzentrum).
-     */
-    private View button(String title, Runnable action, boolean big) {
-        LinearLayout b = new LinearLayout(this);
-        b.setOrientation(big ? LinearLayout.VERTICAL : LinearLayout.HORIZONTAL);
-        // Große Kachel: Symbol groß in der Mitte, Titel darunter (Wunsch des Nutzers).
-        b.setGravity(big ? Gravity.CENTER : Gravity.CENTER_VERTICAL | Gravity.START);
-        int p = Ui.dp(this, 12);
-        b.setPadding(p, big ? Ui.dp(this, 6) : 0, p, big ? Ui.dp(this, 6) : 0);
-        b.setFocusable(true);
-        b.setClickable(true);
-        float r = Ui.dp(this, TILE_RADIUS_DP);
-        b.setBackground(Ui.rounded(Ui.ROW, r));
-        Ui.evenShadow(b);
-        final String id = buildingId;
-        ControlIcons.Icon icon = new ControlIcons.Icon(id, iconColor(id, false));
-        if (id != null) {
-            icons.put(id, icon);
-            tiles.put(id, b);
-        }
-        android.widget.ImageView iv = new android.widget.ImageView(this);
-        iv.setImageDrawable(icon);
-        int is = Ui.dp(this, big ? 48 : 22);
-        LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(is, is);
-        if (big) {
-            ilp.bottomMargin = Ui.dp(this, 4);
-        } else {
-            ilp.rightMargin = Ui.dp(this, 8);
-        }
-        b.addView(iv, ilp);
-        TextView t = Ui.text(this, title, big ? 13 : 12, Ui.TEXT, true);
-        Ui.marquee(t);
-        if (big) t.setGravity(Gravity.CENTER_HORIZONTAL);
-        b.addView(t, big ? new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT) : new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        b.setOnFocusChangeListener((v, has) -> {
-            v.setBackground(Ui.rounded(has ? Ui.ROW_FOCUSED : Ui.ROW, r));
-            t.setTextColor(has ? Ui.TEXT_ON_FOCUS : Ui.TEXT);
-            icon.setColor(iconColor(id, has));
-            // Zu langer Text läuft auf der fokussierten Kachel durch (B12).
-            t.setSelected(has);
-            // Leicht vergrößert, aber mit Luft zu den Nachbarn (B19).
-            v.animate().scaleX(has ? FOCUS_SCALE : 1f).scaleY(has ? FOCUS_SCALE : 1f)
-                    .translationZ(has ? Ui.dp(this, 10) : 0).setDuration(Ui.ms(140)).start();
-        });
-        b.setOnClickListener(v -> action.run());
-        return b;
-    }
-
     View wideRow(String label, Runnable action) {
         LinearLayout row = Ui.row(this);
         row.setMinimumHeight(Ui.dp(this, 42));
@@ -901,7 +711,7 @@ public final class ControlCenterActivity extends Activity {
         row.setOnClickListener(v -> action.run());
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.topMargin = Ui.dp(this, GAP_DP);
+        lp.topMargin = Ui.dp(this, CcTiles.GAP_DP);
         // Platz an den Seiten, damit die vergrößerte Zeile mit Fokus samt Schatten nicht am Rand anstößt.
         lp.leftMargin = Ui.dp(this, 8);
         lp.rightMargin = Ui.dp(this, 8);
