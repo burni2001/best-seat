@@ -2,7 +2,7 @@
   <img src="docs/banner.png" width="480" alt="Best Seat">
 </p>
 
-<h3 align="center">A tvOS-inspired launcher for Google TV</h3>
+<h3 align="center">A launcher for Google TV heavily inspired by tvOS</h3>
 
 <p align="center">
   Calm, big and focused: your apps in a clean grid, a top shelf with what to watch next,
