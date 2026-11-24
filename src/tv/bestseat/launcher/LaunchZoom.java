@@ -55,7 +55,9 @@ final class LaunchZoom {
         if (w <= 0 || h <= 0) return;
         try {
             android.graphics.Bitmap b = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888);
-            v.draw(new android.graphics.Canvas(b));
+            android.graphics.Canvas bc = new android.graphics.Canvas(b);
+            if (v instanceof TileView) ((TileView) v).drawBare(bc);
+            else v.draw(bc);
             int[] loc = new int[2];
             v.getLocationOnScreen(loc);
             zoomRect = new android.graphics.RectF(loc[0], loc[1], loc[0] + w * v.getScaleX(), loc[1] + h * v.getScaleY());

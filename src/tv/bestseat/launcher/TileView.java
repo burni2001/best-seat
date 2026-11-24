@@ -28,6 +28,21 @@ final class TileView extends FrameLayout {
     private final View gloss;
     private ObjectAnimator wiggle;
     private final float radius;
+    /** Beim Abbild für den Start-Zoom: ohne Lichtkante, sonst steht ein Schein auf der Fläche in Kachelfarbe. */
+    private boolean bare;
+
+    /** Kachel ohne Lichtkante und Glanzstreifen auf canvas zeichnen (Bild für den Start-Zoom). */
+    void drawBare(android.graphics.Canvas canvas) {
+        float glossAlpha = gloss.getAlpha();
+        bare = true;
+        gloss.setAlpha(0f);
+        try {
+            draw(canvas);
+        } finally {
+            bare = false;
+            gloss.setAlpha(glossAlpha);
+        }
+    }
     private final android.graphics.RectF edgeBox = new android.graphics.RectF();
 
     TileView(Context context, Tile tile, int width, int height) {
@@ -99,7 +114,7 @@ final class TileView extends FrameLayout {
     protected void dispatchDraw(android.graphics.Canvas canvas) {
         super.dispatchDraw(canvas);
         // Glass: leichte Lichtkante auf App-Kacheln (Ordner haben ihr eigenes Glas).
-        if (LiquidGlass.on && tile.kind != Tile.FOLDER) {
+        if (LiquidGlass.on && tile.kind != Tile.FOLDER && !bare) {
             edgeBox.set(0, 0, getWidth(), getHeight());
             LiquidGlass.edge(canvas, edgeBox, radius, LiquidGlass.density(), 0.5f);
         }
