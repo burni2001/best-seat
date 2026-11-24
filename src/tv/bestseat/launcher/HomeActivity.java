@@ -413,6 +413,10 @@ public final class HomeActivity extends Activity
         topContent = new LinearLayout(this);
         topContent.setOrientation(LinearLayout.HORIZONTAL);
         topContent.setGravity(Gravity.CENTER_VERTICAL);
+        // Die VPN-Pille rückt beim Kontrollzentrum nach links (shiftVpn) über den Rand der Kopfzeile hinaus:
+        // nicht abschneiden.
+        topContent.setClipChildren(false);
+        topBar.setClipChildren(false);
         topBar.addView(topContent);
         vpnPill = Ui.text(this, "VPN", 13, Ui.TEXT, true);
         vpnPill.setPadding(Ui.dp(this, 10), Ui.dp(this, 2), Ui.dp(this, 10), Ui.dp(this, 2));
