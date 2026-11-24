@@ -67,7 +67,11 @@ public final class AppRepository {
             Drawable banner = activity.loadBanner(pm);
             if (banner == null) banner = app.loadBanner(pm);
             tile.icon = info.loadIcon(pm);
-            if (banner != null) {
+            Drawable own = TileImages.load(context, tile.pkg);
+            if (own != null) {
+                // Eigenes Kachelbild des Nutzers (W126).
+                tile.banner = own;
+            } else if (banner != null) {
                 tile.banner = cacheBanner(pm, cacheDir, tile.pkg, banner);
             } else {
                 tile.color = backgroundFor(tile.icon);
@@ -94,7 +98,8 @@ public final class AppRepository {
             ghost.external = true;
             ghost.available = false;
             File cached = new File(cacheDir, pkg + ".png");
-            if (cached.exists()) {
+            ghost.banner = TileImages.load(context, pkg);
+            if (ghost.banner == null && cached.exists()) {
                 Bitmap bmp = BitmapFactory.decodeFile(cached.getPath());
                 if (bmp != null) ghost.banner = new BitmapDrawable(context.getResources(), bmp);
             }

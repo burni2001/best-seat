@@ -931,6 +931,9 @@ public final class HomeActivity extends Activity
             focusedKey = next;
             buildGrid();
         });
+        if (tile.kind == Tile.APP && tile.pkg != null) {
+            Dialogs.actionRow(this, p, "Change Image \u2026", () -> changeImage(tile));
+        }
         if (tile.kind == Tile.APP && tile.pkg != null && tile.available) {
             Dialogs.actionRow(this, p, "App Info", () -> openAppInfo(tile.pkg));
         }
@@ -992,6 +995,66 @@ public final class HomeActivity extends Activity
         }
         show(p);
         if (firstFocus != null) firstFocus.requestFocus();
+    }
+
+    /**
+     * Kachelbild ersetzen (W126): Adresse einer kleinen Webseite zeigen, die am Handy oder Rechner
+     * im WLAN eine Bild-URL oder eine Bilddatei annimmt. Der Server läuft nur, solange das Fenster offen ist.
+     */
+    void changeImage(Tile tile) {
+        final Dialogs.Panel[] holder = new Dialogs.Panel[1];
+        ImageServer server = new ImageServer(this, tile.pkg, tile.label, () -> {
+            if (holder[0] != null && holder[0].dialog.isShowing()) holder[0].dialog.dismiss();
+            Toast.makeText(this, "New image for " + tile.label, Toast.LENGTH_SHORT).show();
+            refreshTiles(tile.key);
+        });
+        String url = server.start();
+        Dialogs.Panel p = Dialogs.panel(this, "Change Image", 520);
+        holder[0] = p;
+        if (url == null) {
+            p.content.addView(Ui.text(this, "The TV has no Wi-Fi or network address right now.", 16, Ui.TEXT_DIM, false));
+        } else {
+            TextView how = Ui.text(this, "On your phone or computer in the same network, open:", 16, Ui.TEXT_DIM, false);
+            how.setMaxLines(3);
+            p.content.addView(how);
+            TextView address = Ui.text(this, url.substring("http://".length()), 24, Ui.TEXT, true);
+            address.setPadding(0, Ui.dp(this, 10), 0, Ui.dp(this, 6));
+            p.content.addView(address);
+            TextView tip = Ui.text(this, "Paste an image address or upload a picture there. Wide images (16:9) fit best.",
+                    14, Ui.TEXT_DIM, false);
+            tip.setMaxLines(3);
+            p.content.addView(tip);
+        }
+        View spacer = new View(this);
+        p.content.addView(spacer, new LinearLayout.LayoutParams(1, Ui.dp(this, 16)));
+        LinearLayout first = null;
+        if (TileImages.has(this, tile.pkg)) {
+            first = Dialogs.actionRow(this, p, "Use App Image", () -> {
+                TileImages.remove(this, tile.pkg);
+                refreshTiles(tile.key);
+            });
+        }
+        LinearLayout done = Dialogs.actionRow(this, p, "Done", () -> { });
+        if (first == null) first = done;
+        show(p);
+        // show() setzt den eigenen Schließen-Hörer; der Server endet mit dem Fenster.
+        android.content.DialogInterface.OnDismissListener base = d -> {
+            if (openDialog == p.dialog) openDialog = null;
+            if (childDialog != null) {
+                childDialog.dismiss();
+                childDialog = null;
+            }
+            server.stop();
+        };
+        p.dialog.setOnDismissListener(base);
+        first.requestFocus();
+    }
+
+    /** Kacheln neu aufbauen (neues Bild), Fokus bleibt auf der Kachel. */
+    private void refreshTiles(String key) {
+        focusedKey = key;
+        tilesSignature = "";
+        reload();
     }
 
     void show(Dialogs.Panel p) {

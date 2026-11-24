@@ -224,6 +224,12 @@ final class HomeFolders {
             home.focusedKey = folder;
             home.buildGrid();
         });
+        if (tile.kind == Tile.APP && tile.pkg != null) {
+            Dialogs.actionRow(home, p, "Change Image \u2026", () -> {
+                folderPanel.dialog.dismiss();
+                home.changeImage(tile);
+            });
+        }
         if (tile.kind == Tile.APP && tile.pkg != null && tile.available) {
             Dialogs.actionRow(home, p, "App Info", () -> home.openAppInfo(tile.pkg));
         }
