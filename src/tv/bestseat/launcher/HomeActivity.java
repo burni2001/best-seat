@@ -58,11 +58,12 @@ public final class HomeActivity extends Activity
     final Handler handler = new Handler(Looper.getMainLooper());
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
 
-    private LayoutStore store;
+    LayoutStore store;
     private final HomeBanners banners = new HomeBanners(this);
     private final TopShelf topShelf = new TopShelf(this, banners);
-    private List<Tile> allTiles = new ArrayList<>();
-    private final List<TileView> tileViews = new ArrayList<>();
+    private final HomeFolders folders = new HomeFolders(this);
+    List<Tile> allTiles = new ArrayList<>();
+    final List<TileView> tileViews = new ArrayList<>();
     private final List<Tile> visible = new ArrayList<>();
 
     PageScrollView scroll;
@@ -491,7 +492,7 @@ public final class HomeActivity extends Activity
         b.append(';');
     }
 
-    private void buildGrid() {
+    void buildGrid() {
         int columns = Prefs.columns(this);
         builtColumns = columns;
         builtNonTv = Prefs.nonTvApps(this);
@@ -512,7 +513,7 @@ public final class HomeActivity extends Activity
         java.util.Set<String> placed = new java.util.HashSet<>();
         for (String key : new ArrayList<>(store.order)) {
             if (LayoutStore.isFolder(key)) {
-                Tile folder = folderTile(key, byKey);
+                Tile folder = folders.tile(key, byKey);
                 if (folder != null) visible.add(folder);
                 continue;
             }
@@ -869,12 +870,12 @@ public final class HomeActivity extends Activity
         return super.dispatchKeyEvent(event);
     }
 
-    private void open(Tile tile) {
+    void open(Tile tile) {
         if (tile.kind != Tile.APP && tile.kind != Tile.INPUT) zoomBmp = null;
         switch (tile.kind) {
             case Tile.HIDDEN_APPS: hiddenApps(); return;
             case Tile.SETTINGS: startActivity(new Intent(this, SettingsActivity.class)); return;
-            case Tile.FOLDER: openFolder(tile.key); return;
+            case Tile.FOLDER: folders.open(tile.key); return;
             default: break;
         }
         if (!tile.available) {
@@ -910,7 +911,7 @@ public final class HomeActivity extends Activity
     }
 
     /** Bild und sichtbare Lage der Kachel merken (vor dem Schließen eines Ordners). */
-    private void captureZoom(View v) {
+    void captureZoom(View v) {
         zoomBmp = null;
         int w = v.getWidth(), h = v.getHeight();
         if (w <= 0 || h <= 0) return;
@@ -1135,14 +1136,14 @@ public final class HomeActivity extends Activity
     private void tileMenu(Tile tile) {
         if (tile.kind == Tile.HIDDEN_APPS || tile.kind == Tile.SETTINGS) return;
         if (tile.kind == Tile.FOLDER) {
-            folderMenu(tile);
+            folders.menu(tile);
             return;
         }
         // Wie das tvOS-Kontextmenü: ohne Kopfzeile, „Edit Home Screen“ startet das Verschieben,
         // „Add to Folder …“ öffnet die Ordnerwahl daneben.
         Dialogs.Panel p = Dialogs.menu(this, null).anchor(currentTileView);
         LinearLayout first = Dialogs.actionRow(this, p, "Edit Home Screen", () -> startMoving(tile.key));
-        Dialogs.actionRow(this, p, "Add to Folder \u2026", () -> chooseFolder(tile));
+        Dialogs.actionRow(this, p, "Add to Folder \u2026", () -> folders.choose(tile));
         Dialogs.actionRow(this, p, "Hide from Home Screen", () -> {
             // Fokus auf die Kachel, die an diese Stelle nachrückt (sonst die davor), damit die
             // Startseite stehen bleibt statt nach oben zu springen.
@@ -1170,201 +1171,13 @@ public final class HomeActivity extends Activity
         first.requestFocus();
     }
 
-    private void openAppInfo(String pkg) {
+    void openAppInfo(String pkg) {
         try {
             startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                     Uri.fromParts("package", pkg, null)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
         } catch (RuntimeException e) {
             Toast.makeText(this, "App info not available", Toast.LENGTH_SHORT).show();
         }
-    }
-
-    // ---------------------------------------------------------------- Ordner
-
-    /** Kachel für einen Ordner mit seinen sichtbaren Apps; leer = keine Kachel. */
-    private Tile folderTile(String key, java.util.Map<String, Tile> byKey) {
-        LayoutStore.Folder f = store.folders.get(key);
-        if (f == null) return null;
-        List<Tile> members = new ArrayList<>();
-        for (String k : f.keys) {
-            Tile t = byKey.get(k);
-            if (t != null && !store.hidden.contains(k)) members.add(t);
-        }
-        if (members.isEmpty()) return null;
-        Tile folder = new Tile(key, Tile.FOLDER, f.name);
-        folder.members = members;
-        folder.banner = new FolderDrawable(members);
-        folder.color = Color.TRANSPARENT;
-        return folder;
-    }
-
-    /** Geöffneter Ordner: großer Kasten mit Titel und den Apps als Kacheln. */
-    private void openFolder(String folderKey) {
-        LayoutStore.Folder f = store.folders.get(folderKey);
-        if (f == null) return;
-        java.util.Map<String, Tile> byKey = new java.util.HashMap<>();
-        for (Tile t : allTiles) byKey.put(t.key, t);
-        // Kompakt wie tvOS: 3 Kacheln nebeneinander, Kasten fest für 3×3 (W33, Sammelmeldung 10).
-        int cols = 3;
-        int tileDp = 116;
-        int gapDp = 24;
-        int boxDp = cols * tileDp + (cols - 1) * gapDp + 2 * 18 + 2 * 16;
-        int rowDp = 14 + Math.round(tileDp * 3f / 5f) + 10 + 18;
-        View origin = null;
-        for (TileView tv : tileViews) {
-            if (tv.tile.key.equals(folderKey)) origin = tv;
-        }
-        Dialogs.Panel p = Dialogs.folderPanel(this, f.name, boxDp, 3 * rowDp + 12, snapshot(), origin);
-        int gap = Ui.dp(this, gapDp);
-        int w = Ui.dp(this, tileDp);
-        int h = Math.round(w * 3f / 5f);
-        LinearLayout row = null;
-        View first = null;
-        int i = 0;
-        for (String k : f.keys) {
-            Tile t = byKey.get(k);
-            if (t == null || store.hidden.contains(k)) continue;
-            if (i % cols == 0) {
-                row = new LinearLayout(this);
-                row.setOrientation(LinearLayout.HORIZONTAL);
-                row.setClipChildren(false);
-                row.setClipToPadding(false);
-                LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT);
-                rp.topMargin = Ui.dp(this, 14);
-                p.content.addView(row, rp);
-            }
-            LinearLayout cell = new LinearLayout(this);
-            cell.setOrientation(LinearLayout.VERTICAL);
-            cell.setClipChildren(false);
-            TileView tv = new TileView(this, t, w, h);
-            cell.addView(tv);
-            TextView label = Ui.text(this, t.label, 13, Color.WHITE, true);
-            label.setShadowLayer(Ui.dp(this, 8), 0, Ui.dp(this, 1), Ui.light ? Color.argb(70, 0, 0, 0) : Color.argb(150, 0, 0, 0));
-            label.setGravity(Gravity.CENTER);
-            label.setAlpha(0f);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(w, ViewGroup.LayoutParams.WRAP_CONTENT);
-            lp.topMargin = Math.round(h * (TileView.FOCUS_SCALE - 1f) / 2f) + Ui.dp(this, 4);
-            label.setTranslationY(Ui.dp(this, 2));
-            label.setTypeface(Fonts.get(label.getContext(), Fonts.MEDIUM));
-            Ui.marquee(label);
-            cell.addView(label, lp);
-            tv.setOnFocusChangeListener((v, has) -> {
-                tv.focus(has, 0, 0);
-                label.animate().alpha(has ? 1f : 0f).setDuration(Ui.ms(has ? 220 : 100)).start();
-                label.setSelected(has);
-            });
-            tv.setOnClickListener(v -> {
-                captureZoom(tv);
-                p.dialog.dismiss();
-                open(t);
-            });
-            tv.setOnLongClickListener(v -> {
-                folderAppMenu(p, t);
-                return true;
-            });
-            LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(w, ViewGroup.LayoutParams.WRAP_CONTENT);
-            if (i % cols != 0) cp.leftMargin = gap;
-            row.addView(cell, cp);
-            if (first == null) first = tv;
-            i++;
-        }
-        show(p);
-        if (first != null) first.requestFocus();
-    }
-
-    /** Verkleinertes Bild der Startseite als Hintergrund für den geöffneten Ordner. */
-    private android.graphics.Bitmap snapshot() {
-        try {
-            View root = getWindow().getDecorView();
-            int w = root.getWidth() / 4;
-            int h = root.getHeight() / 4;
-            if (w <= 0 || h <= 0) return null;
-            android.graphics.Bitmap bmp = android.graphics.Bitmap.createBitmap(w, h,
-                    android.graphics.Bitmap.Config.ARGB_8888);
-            android.graphics.Canvas c = new android.graphics.Canvas(bmp);
-            c.scale(0.25f, 0.25f);
-            root.draw(c);
-            return bmp;
-        } catch (RuntimeException e) {
-            return null;
-        }
-    }
-
-    /** Langes OK auf einer App im Ordner. */
-    private void folderAppMenu(Dialogs.Panel folderPanel, Tile tile) {
-        Dialogs.Panel p = Dialogs.menu(this, null).anchor(folderPanel.dialog.getCurrentFocus());
-        LinearLayout first = Dialogs.actionRow(this, p, "Remove from Folder", () -> {
-            folderPanel.dialog.dismiss();
-            store.removeFromFolder(tile.key);
-            focusedKey = tile.key;
-            buildGrid();
-        });
-        Dialogs.actionRow(this, p, "Move to \u2026", () -> {
-            folderPanel.dialog.dismiss();
-            chooseFolder(tile);
-        });
-        Dialogs.actionRow(this, p, "Hide from Home Screen", () -> {
-            String folder = store.folderOf(tile.key);
-            folderPanel.dialog.dismiss();
-            store.setHidden(tile.key, true);
-            focusedKey = folder;
-            buildGrid();
-        });
-        if (tile.kind == Tile.APP && tile.pkg != null && tile.available) {
-            Dialogs.actionRow(this, p, "App Info", () -> openAppInfo(tile.pkg));
-        }
-        p.dialog.show();
-        first.requestFocus();
-    }
-
-    /** Ordner wählen oder neu anlegen. */
-    private void chooseFolder(Tile tile) {
-        Dialogs.Panel p = Dialogs.menu(this, null).anchor(currentTileView);
-        String current = store.folderOf(tile.key);
-        LinearLayout first = Dialogs.actionRow(this, p, "New Folder", "\u2295", false, () -> askName("New Folder", "Folder", name -> {
-            String key = store.createFolder(name, tile.key);
-            focusedKey = key;
-            buildGrid();
-        }));
-        for (java.util.Map.Entry<String, LayoutStore.Folder> e : store.folders.entrySet()) {
-            if (e.getKey().equals(current)) continue;
-            String key = e.getKey();
-            Dialogs.actionRow(this, p, e.getValue().name, () -> {
-                store.addToFolder(key, tile.key);
-                focusedKey = key;
-                buildGrid();
-            });
-        }
-        show(p);
-        first.requestFocus();
-    }
-
-    /** Langes OK auf einem Ordner. */
-    private void folderMenu(Tile folder) {
-        Dialogs.Panel p = Dialogs.menu(this, null).anchor(currentTileView);
-        LinearLayout first = Dialogs.actionRow(this, p, "Edit Home Screen", () -> startMoving(folder.key));
-        Dialogs.actionRow(this, p, "Rename", () -> askName("Rename folder", folder.label, name -> {
-            store.renameFolder(folder.key, name);
-            focusedKey = folder.key;
-            buildGrid();
-        }));
-        Dialogs.actionRow(this, p, "Remove Folder", () -> {
-            List<Tile> members = folder.members;
-            store.removeFolder(folder.key);
-            focusedKey = members != null && !members.isEmpty() ? members.get(0).key : null;
-            buildGrid();
-        });
-        show(p);
-        first.requestFocus();
-    }
-
-    private interface NameCallback {
-        void done(String name);
-    }
-
-    private void askName(String title, String preset, NameCallback callback) {
-        Dialogs.askText(this, title, preset, callback::done);
     }
 
     private void hiddenApps() {
@@ -1408,7 +1221,7 @@ public final class HomeActivity extends Activity
         if (firstFocus != null) firstFocus.requestFocus();
     }
 
-    private void show(Dialogs.Panel p) {
+    void show(Dialogs.Panel p) {
         if (openDialog != null) openDialog.dismiss();
         openDialog = p.dialog;
         p.dialog.setOnDismissListener(d -> {
@@ -1419,7 +1232,7 @@ public final class HomeActivity extends Activity
 
     // ---------------------------------------------------------------- Verschieben
 
-    private void startMoving(String key) {
+    void startMoving(String key) {
         movingKey = key;
         for (TileView tv : tileViews) {
             tv.setWiggle(tv.tile.key.equals(key));
