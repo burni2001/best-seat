@@ -33,6 +33,9 @@ final class Backup {
     private static final String MIGRATE = "{ [ -d " + OLD_DIR + " ] && [ ! -e " + DIR + " ] && mv " + OLD_DIR + " " + DIR + "; true; }; ";
     static final String FILE = DIR + "/backup.json";
     private static final String PREVIOUS = DIR + "/backup-previous.json";
+    /** Eigene Bilder (W110): HD-Banner und Kachelbilder, als Dateien neben backup.json. */
+    private static final String IMAGES = DIR + "/images";
+    private static final String TILE_IMAGES = "tile-images";
     /** Gesicherte Einstellungsdateien (SharedPreferences). */
     private static final String[] PREF_FILES = {"settings", "allapps", "blacklist"};
     private static final int TIMEOUT_MS = 20000;
@@ -72,6 +75,70 @@ final class Backup {
                 + "; true; } && echo " + b64 + " | base64 -d > " + FILE + " && echo SAVED";
         String out = AdbClient.shell(context, cmd, TIMEOUT_MS);
         if (!out.endsWith("SAVED")) throw new Exception(out.isEmpty() ? "Could not write the backup" : out);
+        saveImages(context);
+    }
+
+    /**
+     * Bilder nach Download/BestSeat/images kopieren. HD-Banner liegen schon im externen Ordner
+     * (Android/data, internes Laufwerk) und gehen direkt; Kachelbilder liegen im App-Datenordner, den adb
+     * nicht lesen kann, und werden dafür kurz in den externen Ordner gelegt.
+     */
+    private static void saveImages(Context context) throws Exception {
+        File ext = context.getExternalFilesDir(null);
+        if (ext == null) throw new Exception("No external folder for images");
+        File stage = new File(ext, "backup-tile-images");
+        deleteTree(stage);
+        stage.mkdirs();
+        File[] files = new File(context.getFilesDir(), TILE_IMAGES).listFiles();
+        if (files != null) for (File f : files) if (f.isFile()) copy(f, new File(stage, f.getName()));
+        String hd = new File(ext, HomeBanners.HD_BANNER_DIR).getPath();
+        String out = AdbClient.shell(context, "rm -rf " + IMAGES + " && mkdir -p " + IMAGES + "/" + TILE_IMAGES
+                + " " + IMAGES + "/" + HomeBanners.HD_BANNER_DIR
+                + " && cp -r " + stage.getPath() + "/. " + IMAGES + "/" + TILE_IMAGES + "/"
+                + " && { [ -d " + hd + " ] && cp -r " + hd + "/. " + IMAGES + "/" + HomeBanners.HD_BANNER_DIR + "/; true; }"
+                + " && echo COPIED", TIMEOUT_MS).trim();
+        deleteTree(stage);
+        if (!out.endsWith("COPIED")) throw new Exception("Could not copy the images: " + out);
+    }
+
+    /** Bilder aus Download/BestSeat/images zurückholen; fehlt der Ordner (alte Sicherung), bleibt alles, wie es ist. */
+    private static void restoreImages(Context context) throws Exception {
+        File ext = context.getExternalFilesDir(null);
+        if (ext == null) return;
+        File stage = new File(ext, "restore-tile-images");
+        deleteTree(stage);
+        String hd = new File(ext, HomeBanners.HD_BANNER_DIR).getPath();
+        String out = AdbClient.shell(context, "[ -d " + IMAGES + " ] || { echo NONE; exit 0; }; "
+                + "rm -rf " + hd + " " + stage.getPath() + " && mkdir -p " + hd + " " + stage.getPath()
+                + " && cp -r " + IMAGES + "/" + HomeBanners.HD_BANNER_DIR + "/. " + hd + "/"
+                + " && cp -r " + IMAGES + "/" + TILE_IMAGES + "/. " + stage.getPath() + "/"
+                + " && echo COPIED", TIMEOUT_MS).trim();
+        if (out.endsWith("NONE")) return;
+        if (!out.endsWith("COPIED")) throw new Exception("Could not read the images: " + out);
+        File target = new File(context.getFilesDir(), TILE_IMAGES);
+        deleteTree(target);
+        File[] files = stage.listFiles();
+        if (files != null) {
+            for (File f : files) if (f.isFile() && f.getName().endsWith(".png")) copy(f, new File(target, f.getName()));
+        }
+        deleteTree(stage);
+        TileImages.version++;
+    }
+
+    private static void copy(File from, File to) throws Exception {
+        to.getParentFile().mkdirs();
+        try (java.io.FileInputStream in = new java.io.FileInputStream(from);
+                FileOutputStream out = new FileOutputStream(to)) {
+            byte[] b = new byte[65536];
+            int n;
+            while ((n = in.read(b)) > 0) out.write(b, 0, n);
+        }
+    }
+
+    private static void deleteTree(File f) {
+        File[] kids = f.listFiles();
+        if (kids != null) for (File k : kids) deleteTree(k);
+        f.delete();
     }
 
     /** Zeit der letzten Sicherung oder null, wenn keine da ist. */
@@ -119,6 +186,7 @@ final class Backup {
                 if (p != null) jsonToPrefs(p, context.getSharedPreferences(name, Context.MODE_PRIVATE));
             }
         }
+        restoreImages(context);
     }
 
     // ---------------------------------------------------------------- Hilfen

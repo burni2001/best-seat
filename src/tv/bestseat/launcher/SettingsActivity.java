@@ -684,7 +684,7 @@ public final class SettingsActivity extends Activity {
     private void backupRows() {
         TextView last = Ui.dimText(this, "\u2026");
         LinearLayout save = row("Back up now", last,
-                "Save tiles, folders and settings to the TV's Downloads folder.");
+                "Save tiles, folders, settings and images to the TV's Downloads folder.");
         save.setTag("backup_save");
         save.setOnClickListener(v -> {
             last.setText("Saving\u2026");
