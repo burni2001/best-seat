@@ -53,7 +53,6 @@ public final class HomeActivity extends Activity
 
     /** Rand links/rechts wie tvOS (90 px). */
     static final int SIDE_DP = 45;
-    private static final long STORAGE_TIMEOUT_MS = 90_000;
 
     final Handler handler = new Handler(Looper.getMainLooper());
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
@@ -62,6 +61,9 @@ public final class HomeActivity extends Activity
     private final HomeBanners banners = new HomeBanners(this);
     private final TopShelf topShelf = new TopShelf(this, banners);
     private final HomeFolders folders = new HomeFolders(this);
+    final LaunchZoom zoom = new LaunchZoom(this);
+    private final StorageWait storage = new StorageWait(this);
+    FrameLayout rootView;
     List<Tile> allTiles = new ArrayList<>();
     final List<TileView> tileViews = new ArrayList<>();
     private final List<Tile> visible = new ArrayList<>();
@@ -93,17 +95,14 @@ public final class HomeActivity extends Activity
     private int builtFont;
     private boolean resumed;
     /** Sichtbar seit (uptime), 0 = gestoppt. Für „Home auf der Startseite“: Android pausiert vor onNewIntent. */
-    private long visibleSince;
+    long visibleSince;
     private Dialog openDialog;
 
-    private String waitingPkg;
-    private long waitingSince;
-    private Dialogs.Panel waitingPanel;
 
     private long lastInput = SystemClock.elapsedRealtime();
     private final Runnable saverTimer = this::startScreensaver;
 
-    private LauncherApps launcherApps;
+    LauncherApps launcherApps;
     private PackageCallback packageCallback;
     private ConnectivityManager connectivity;
     private VpnCallback vpnCallback;
@@ -201,8 +200,8 @@ public final class HomeActivity extends Activity
         super.onStart();
         visibleSince = android.os.SystemClock.uptimeMillis();
         visibleHome = new java.lang.ref.WeakReference<>(this);
-        removeZoom(false);
-        maybeZoomBack();
+        zoom.remove(false);
+        zoom.maybeZoomBack();
     }
 
     @Override
@@ -308,39 +307,6 @@ public final class HomeActivity extends Activity
         overridePendingTransition(0, 0);
     }
 
-    /** stillResumed: auch eine App gelten lassen, deren Pause Android noch nicht eingetragen hat (onStart). */
-    private static String appLeftByHome(Context c, long pressWall, boolean stillResumed) {
-        try {
-            android.app.usage.UsageStatsManager usm =
-                    (android.app.usage.UsageStatsManager) c.getSystemService(Context.USAGE_STATS_SERVICE);
-            android.app.usage.UsageEvents events = usm.queryEvents(pressWall - 60_000, System.currentTimeMillis());
-            android.app.usage.UsageEvents.Event e = new android.app.usage.UsageEvents.Event();
-            String own = c.getPackageName();
-            String lastPkg = null;
-            long lastPause = 0;
-            String resumedPkg = null;
-            while (events.hasNextEvent()) {
-                events.getNextEvent(e);
-                if (own.equals(e.getPackageName())) continue;
-                if (e.getEventType() == android.app.usage.UsageEvents.Event.ACTIVITY_PAUSED) {
-                    lastPkg = e.getPackageName();
-                    lastPause = e.getTimeStamp();
-                    resumedPkg = null;
-                } else if (e.getEventType() == android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED) {
-                    // Wieder vorne: (noch) nicht verlassen.
-                    lastPkg = null;
-                    resumedPkg = e.getPackageName();
-                }
-            }
-            if (stillResumed && resumedPkg != null) return resumedPkg;
-            if (lastPkg == null || Math.abs(pressWall - lastPause) > 1500) return null;
-            return lastPkg;
-        } catch (RuntimeException ex) {
-            Log.w(TAG, "usage stats", ex);
-            return null;
-        }
-    }
-
     // ---------------------------------------------------------------- Oberfläche
 
     private void buildUi() {
@@ -417,7 +383,7 @@ public final class HomeActivity extends Activity
 
     private final Runnable reloadRunnable = this::reload;
 
-    private void reload() {
+    void reload() {
         final Context app = getApplicationContext();
         worker.execute(() -> {
             List<Tile> loaded;
@@ -438,19 +404,19 @@ public final class HomeActivity extends Activity
                 // nicht neu aufbauen, sonst spielt die fokussierte Kachel ihre Fokus-Animation erneut.
                 if (sig.equals(tilesSignature) && !tileViews.isEmpty()) {
                     Log.i(TAG, "Reload: unchanged, grid kept");
-                    checkWaiting();
+                    storage.check();
                     return;
                 }
                 tilesSignature = sig;
                 allTiles = loaded;
                 buildGrid();
-                checkWaiting();
+                storage.check();
                 revealPage();
             });
         });
     }
 
-    private boolean pageRevealed;
+    boolean pageRevealed;
 
     /** Erstes Laden fertig: Seite einblenden, ein Bild später, damit Karten und Kacheln schon stehen. */
     private void revealPage() {
@@ -638,7 +604,7 @@ public final class HomeActivity extends Activity
                 if (movingKey == null) {
                     handler.postDelayed(() -> {
                         if (isFinishing()) return;
-                        captureZoom(tv);
+                        zoom.capture(tv);
                         open(tile);
                     }, pressRemaining());
                 }
@@ -870,37 +836,6 @@ public final class HomeActivity extends Activity
         return super.dispatchKeyEvent(event);
     }
 
-    void open(Tile tile) {
-        if (tile.kind != Tile.APP && tile.kind != Tile.INPUT) zoomBmp = null;
-        switch (tile.kind) {
-            case Tile.HIDDEN_APPS: hiddenApps(); return;
-            case Tile.SETTINGS: startActivity(new Intent(this, SettingsActivity.class)); return;
-            case Tile.FOLDER: folders.open(tile.key); return;
-            default: break;
-        }
-        if (!tile.available) {
-            waitForStorage(tile);
-            return;
-        }
-        launch(tile);
-    }
-
-    /**
-     * Start-Animation wie tvOS: Die Kachel fliegt sofort auf den Zuschauer zu und füllt den Schirm,
-     * während die App im Hintergrund startet (je nach App 1–2 s bis zum ersten Bild, vom USB-Stick
-     * länger). Sobald das App-Fenster da ist, blendet es darüber ein.
-     */
-    private android.graphics.Bitmap zoomBmp;
-    private android.graphics.RectF zoomRect;
-    private float zoomRadius;
-    private View zoomOverlay;
-    private FrameLayout rootView;
-    private final Runnable zoomTimeout = () -> {
-        // Kein App-Fenster gekommen (Start fehlgeschlagen o. ä.): Startseite wieder zeigen. Auch, wenn die
-        // Startseite nie gestoppt wurde: Die App ist dann durchsichtig (z. B. TV-Einstellungen als
-        // Seitenpanel), onStart kommt nie, und die Fläche bliebe sonst stehen (B39).
-        if (hasWindowFocus() || visibleSince != 0) removeZoom(true);
-    };
     private long pressDownAt;
     private static final long MIN_PRESS_MS = 110;
 
@@ -910,224 +845,41 @@ public final class HomeActivity extends Activity
         return Math.max(0, Math.min(Ui.ms(MIN_PRESS_MS), left));
     }
 
-    /** Bild und sichtbare Lage der Kachel merken (vor dem Schließen eines Ordners). */
-    void captureZoom(View v) {
-        zoomBmp = null;
-        int w = v.getWidth(), h = v.getHeight();
-        if (w <= 0 || h <= 0) return;
-        try {
-            android.graphics.Bitmap b = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888);
-            v.draw(new android.graphics.Canvas(b));
-            int[] loc = new int[2];
-            v.getLocationOnScreen(loc);
-            zoomRect = new android.graphics.RectF(loc[0], loc[1], loc[0] + w * v.getScaleX(), loc[1] + h * v.getScaleY());
-            zoomRadius = w * 0.12f * v.getScaleX();
-            zoomBmp = b;
-        } catch (RuntimeException | OutOfMemoryError e) {
-            zoomBmp = null;
+    void open(Tile tile) {
+        if (tile.kind != Tile.APP && tile.kind != Tile.INPUT) zoom.clear();
+        switch (tile.kind) {
+            case Tile.HIDDEN_APPS: hiddenApps(); return;
+            case Tile.SETTINGS: startActivity(new Intent(this, SettingsActivity.class)); return;
+            case Tile.FOLDER: folders.open(tile.key); return;
+            default: break;
         }
-    }
-
-    private void startZoom() {
-        zoomAnim(false);
-    }
-
-    /**
-     * reverse = false: Kachel zoomt beim Start auf den ganzen Schirm (bleibt bis zum App-Fenster).
-     * reverse = true: Rückkehr aus der App, genau umgekehrt: vom ganzen Schirm zurück in die Kachel,
-     * danach weg (W82). Kostet wenig: ein Kachelbild, zwei Views, ein Animator.
-     */
-    private void zoomAnim(boolean reverse) {
-        android.graphics.Bitmap bmp = zoomBmp;
-        android.graphics.RectF r = zoomRect;
-        zoomBmp = null;
-        removeZoom(false);
-        if (bmp == null || r == null || rootView == null) return;
-        final int sw = rootView.getWidth(), sh = rootView.getHeight();
-        if (sw <= 0 || sh <= 0) return;
-        int[] rl = new int[2];
-        rootView.getLocationOnScreen(rl);
-        // Fläche in der Hintergrundfarbe der Kachel wächst auf den ganzen Schirm; das Kachelbild selbst
-        // wird höchstens doppelt so groß und landet in der Mitte (Wunsch des Nutzers).
-        FrameLayout box = new FrameLayout(this);
-        box.setClipChildren(false);
-        final View fill = new View(this);
-        fill.setBackgroundColor(edgeColor(bmp));
-        fill.setPivotX(0f);
-        fill.setPivotY(0f);
-        final float[] radius = {zoomRadius};
-        fill.setOutlineProvider(new RoundOutline(radius));
-        fill.setClipToOutline(true);
-        box.addView(fill, new FrameLayout.LayoutParams(sw, sh));
-        final int iw = Math.round(r.width()), ih = Math.round(r.height());
-        final ImageView iv = new ImageView(this);
-        iv.setImageBitmap(bmp);
-        iv.setScaleType(ImageView.ScaleType.FIT_XY);
-        final float[] iRadius = {zoomRadius};
-        iv.setOutlineProvider(new RoundOutline(iRadius));
-        iv.setClipToOutline(true);
-        box.addView(iv, new FrameLayout.LayoutParams(iw, ih));
-        rootView.addView(box, new FrameLayout.LayoutParams(sw, sh));
-        zoomOverlay = box;
-
-        final float x0 = r.left - rl[0], y0 = r.top - rl[1];
-        final float s0x = r.width() / sw, s0y = r.height() / sh;
-        final float rad0 = zoomRadius;
-        final float maxScale = 2f;
-        // Bild: Mitte wandert von der Kachel in die Bildschirmmitte, Größe von 1x auf 2x (Pivot Mitte).
-        final float cx0 = x0 + iw / 2f, cy0 = y0 + ih / 2f;
-        iv.setTranslationX(x0);
-        iv.setTranslationY(y0);
-        final android.view.animation.Interpolator curve =
-                new android.view.animation.PathInterpolator(0.3f, 0f, 0.15f, 1f);
-        ValueAnimator a = ValueAnimator.ofFloat(0f, 1f);
-        a.setDuration(Ui.ms(420));
-        // Umgekehrt: am Anfang schnell, sanft in der Kachel landen.
-        a.setInterpolator(t -> reverse ? 1f - curve.getInterpolation(t) : curve.getInterpolation(t));
-        a.addUpdateListener(an -> {
-            float f = (float) an.getAnimatedValue();
-            float sx = s0x + (1f - s0x) * f, sy = s0y + (1f - s0y) * f;
-            fill.setScaleX(sx);
-            fill.setScaleY(sy);
-            fill.setTranslationX(x0 * (1f - f));
-            fill.setTranslationY(y0 * (1f - f));
-            radius[0] = rad0 * (1f - f) / Math.max(0.01f, sx);
-            fill.invalidateOutline();
-            float is = 1f + (maxScale - 1f) * f;
-            float cx = cx0 + (sw / 2f - cx0) * f, cy = cy0 + (sh / 2f - cy0) * f;
-            iv.setScaleX(is);
-            iv.setScaleY(is);
-            iv.setTranslationX(cx - iw / 2f);
-            iv.setTranslationY(cy - ih / 2f);
-        });
-        if (reverse) {
-            iv.setScaleX(maxScale);
-            iv.setScaleY(maxScale);
-            iv.setTranslationX(sw / 2f - iw / 2f);
-            iv.setTranslationY(sh / 2f - ih / 2f);
-            a.addListener(new ZoomEnd(() -> {
-                if (zoomOverlay == box) removeZoom(false);
-            }));
-            // Erst schrumpfen, wenn die Startseite wirklich zu sehen ist (Fensterfokus); bis dahin steht
-            // die volle Fläche. Apps zeigen beim Beenden oft noch kurz Schwarz.
-            pendingZoomBack = a;
-            zoomBackRunning = true;
-            handler.removeCallbacks(startZoomBack);
-            handler.postDelayed(startZoomBack, 1500);
-            if (hasWindowFocus()) handler.post(startZoomBack);
+        if (!tile.available) {
+            storage.start(tile);
             return;
         }
-        a.start();
-        handler.removeCallbacks(zoomTimeout);
-        handler.postDelayed(zoomTimeout, 6000);
-    }
-
-    /**
-     * Rückkehr auf die Startseite: Wurde gerade eine App verlassen, deren Kachel (oder deren Ordner)
-     * sichtbar ist, schrumpft sie umgekehrt zur Start-Animation in die Kachel zurück.
-     */
-    private ValueAnimator pendingZoomBack;
-    private boolean zoomBackRunning;
-    private final Runnable startZoomBack = () -> {
-        ValueAnimator a = pendingZoomBack;
-        pendingZoomBack = null;
-        if (a != null) a.start();
-    };
-
-    private void maybeZoomBack() {
-        if (Prefs.reduceMotion(this) || !pageRevealed || rootView == null) return;
-        String pkg = appLeftByHome(this, System.currentTimeMillis(), true);
-        Log.i(TAG, "Zoom back: " + pkg);
-        if (pkg == null) return;
-        TileView target = null;
-        for (TileView tv : tileViews) {
-            Tile t = tv.tile;
-            if (pkg.equals(t.pkg)) target = tv;
-            if (target == null && t.members != null) {
-                for (Tile m : t.members) if (pkg.equals(m.pkg)) target = tv;
-            }
-            if (target != null) break;
-        }
-        // Nicht isShown(): Bis onResume ist das Fenster der gestoppten Seite noch unsichtbar geschaltet.
-        if (target == null || target.getVisibility() != View.VISIBLE || !target.isAttachedToWindow()) {
-            Log.i(TAG, "zoom back: no tile " + (target == null ? "found" : "shown"));
-            return;
-        }
-        int[] loc = new int[2];
-        target.getLocationOnScreen(loc);
-        int sh = rootView.getHeight();
-        if (loc[1] + target.getHeight() <= 0 || loc[1] >= sh) {
-            Log.i(TAG, "zoom back: tile off screen " + loc[1]);
-            return;
-        }
-        captureZoom(target);
-        zoomAnim(true);
-    }
-
-    /** Hintergrundfarbe der Kachel: Mittel aus Pixeln knapp innerhalb der vier Ränder. */
-    private static int edgeColor(android.graphics.Bitmap b) {
-        int w = b.getWidth(), h = b.getHeight();
-        int in = Math.max(2, Math.round(Math.min(w, h) * 0.04f));
-        int[][] pts = {
-            {in, h / 2}, {w - 1 - in, h / 2}, {w / 2, in}, {w / 2, h - 1 - in},
-            {in, h / 4}, {w - 1 - in, h / 4}, {in, h * 3 / 4}, {w - 1 - in, h * 3 / 4},
-            {w / 4, in}, {w * 3 / 4, in}, {w / 4, h - 1 - in}, {w * 3 / 4, h - 1 - in},
-        };
-        long rr = 0, gg = 0, bb = 0;
-        int n = 0;
-        for (int[] p : pts) {
-            int c = b.getPixel(p[0], p[1]);
-            if (android.graphics.Color.alpha(c) < 200) continue;
-            rr += android.graphics.Color.red(c);
-            gg += android.graphics.Color.green(c);
-            bb += android.graphics.Color.blue(c);
-            n++;
-        }
-        if (n == 0) return Color.BLACK;
-        return Color.rgb((int) (rr / n), (int) (gg / n), (int) (bb / n));
+        launch(tile);
     }
 
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
-        if (hasFocus && pendingZoomBack != null) {
-            handler.removeCallbacks(startZoomBack);
-            startZoomBack.run();
-        } else if (hasFocus && zoomOverlay != null && !zoomBackRunning) {
-            // Zurück auf der Startseite, die Start-Fläche steht noch (durchsichtige App): weg damit (B39).
-            removeZoom(true);
-        }
-    }
-
-    private void removeZoom(boolean animated) {
-        handler.removeCallbacks(zoomTimeout);
-        handler.removeCallbacks(startZoomBack);
-        pendingZoomBack = null;
-        zoomBackRunning = false;
-        final View iv = zoomOverlay;
-        zoomOverlay = null;
-        if (iv == null || rootView == null) return;
-        if (animated) {
-            iv.animate().alpha(0f).setDuration(Ui.ms(250)).withEndAction(() -> rootView.removeView(iv)).start();
-        } else {
-            rootView.removeView(iv);
-        }
+        zoom.onWindowFocus(hasFocus);
     }
 
     void launch(Tile tile) {
         boolean reduce = Prefs.reduceMotion(this);
-        if (reduce) zoomBmp = null;
-        boolean zoom = zoomBmp != null;
+        if (reduce) zoom.clear();
+        boolean zoomed = zoom.hasCapture();
         try {
             if (tile.intent == null) throw new IllegalStateException("no intent");
-            android.os.Bundle opts = zoom || reduce
+            android.os.Bundle opts = zoomed || reduce
                     ? android.app.ActivityOptions.makeCustomAnimation(this, android.R.anim.fade_in, 0).toBundle()
                     : null;
             startActivity(tile.intent, opts);
-            if (zoom) startZoom();
+            if (zoomed) zoom.start();
         } catch (RuntimeException e) {
-            zoomBmp = null;
-            removeZoom(false);
+            zoom.clear();
+            zoom.remove(false);
             Log.w(TAG, "launch failed: " + tile.key, e);
             Toast.makeText(this, "Can't open " + tile.label, Toast.LENGTH_SHORT).show();
         }
@@ -1272,67 +1024,6 @@ public final class HomeActivity extends Activity
         if (save) store.save();
     }
 
-    // ---------------------------------------------------------------- USB-Stick
-
-    private void waitForStorage(Tile tile) {
-        waitingPkg = tile.pkg;
-        waitingSince = System.currentTimeMillis();
-        Dialogs.Panel p = Dialogs.panel(this, "Waiting for USB storage…", 480);
-        p.content.addView(Ui.text(this, tile.label + " opens as soon as the USB stick is ready.", 16,
-                Ui.TEXT_DIM, false));
-        View spacer = new View(this);
-        p.content.addView(spacer, new LinearLayout.LayoutParams(1, Ui.dp(this, 18)));
-        LinearLayout cancel = Dialogs.actionRow(this, p, "Cancel", () -> waitingPkg = null);
-        cancel.setGravity(Gravity.CENTER);
-        p.dialog.setOnCancelListener(d -> waitingPkg = null);
-        waitingPanel = p;
-        show(p);
-        cancel.requestFocus();
-        handler.removeCallbacks(pollStorage);
-        handler.postDelayed(pollStorage, 1000);
-    }
-
-    // Lambda statt anonymer Klasse: d8 stürzt bei anonymen Klassen in diesem Build ab.
-    private final Runnable pollStorage = this::pollStorageTick;
-
-    private void pollStorageTick() {
-        if (waitingPkg == null) return;
-        if (isAvailable(waitingPkg)) {
-            reload();
-            return;
-        }
-        if (System.currentTimeMillis() - waitingSince > STORAGE_TIMEOUT_MS) {
-            if (waitingPanel != null) waitingPanel.dialog.dismiss();
-            waitingPkg = null;
-            Toast.makeText(this, "USB storage didn't come back", Toast.LENGTH_LONG).show();
-            return;
-        }
-        handler.postDelayed(pollStorage, 1000);
-    }
-
-    private boolean isAvailable(String pkg) {
-        try {
-            return !launcherApps.getActivityList(pkg, Process.myUserHandle()).isEmpty();
-        } catch (RuntimeException e) {
-            return false;
-        }
-    }
-
-    /** Nach dem Neuladen: wartet jemand auf eine App, die jetzt da ist? */
-    private void checkWaiting() {
-        if (waitingPkg == null) return;
-        for (Tile t : allTiles) {
-            if (waitingPkg.equals(t.pkg) && t.available) {
-                waitingPkg = null;
-                handler.removeCallbacks(pollStorage);
-                if (waitingPanel != null) waitingPanel.dialog.dismiss();
-                Log.i(TAG, "Storage back, launching " + t.pkg);
-                launch(t);
-                return;
-            }
-        }
-    }
-
     // ---------------------------------------------------------------- Rückmeldungen
 
     @Override
@@ -1341,7 +1032,7 @@ public final class HomeActivity extends Activity
             for (String p : packages) {
                 // Echte Deinstallation: Kachel vergessen. Beim Aushängen des Sticks kommt
                 // stattdessen onPackagesUnavailable, die Kachel bleibt.
-                if (!isAvailable(p)) store.forget(Tile.appKey(p));
+                if (!storage.isAvailable(p)) store.forget(Tile.appKey(p));
             }
         }
         Log.i(TAG, "Packages " + (removed ? "removed" : available ? "available" : "unavailable")

@@ -93,7 +93,7 @@ final class HomeFolders {
                 label.setSelected(has);
             });
             tv.setOnClickListener(v -> {
-                home.captureZoom(tv);
+                home.zoom.capture(tv);
                 p.dialog.dismiss();
                 home.open(t);
             });
