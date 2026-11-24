@@ -44,7 +44,7 @@ final class TileView extends FrameLayout {
         if (focused && !Prefs.reduceMotion(getContext())) {
             // Licht läuft unten von links nach rechts und gleichzeitig oben von rechts nach links.
             ValueAnimator a = ValueAnimator.ofFloat(0f, 1f);
-            a.setDuration(Ui.ms(1100));
+            a.setDuration(Ui.ms(320)); // so schnell wie der Fokus-Zoom: nur am Rand wahrnehmbar
             a.setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator());
             a.addUpdateListener(an -> {
                 sweep = (float) an.getAnimatedValue();
