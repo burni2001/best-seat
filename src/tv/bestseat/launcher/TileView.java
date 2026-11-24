@@ -27,6 +27,8 @@ final class TileView extends FrameLayout {
     final Tile tile;
     private final View gloss;
     private ObjectAnimator wiggle;
+    private final float radius;
+    private final android.graphics.RectF edgeBox = new android.graphics.RectF();
 
     TileView(Context context, Tile tile, int width, int height) {
         super(context);
@@ -36,7 +38,7 @@ final class TileView extends FrameLayout {
         setLongClickable(true);
         setContentDescription(tile.label);
         // Radius wie tvOS: 30 bei 250 Breite (12 %).
-        float radius = width * 0.12f;
+        radius = width * 0.12f;
         setOutlineProvider(new RoundedOutline(radius));
         setClipToOutline(true);
         setElevation(Ui.dp(context, 2));
@@ -91,6 +93,16 @@ final class TileView extends FrameLayout {
 
         updateAvailability();
         setLayoutParams(new LinearLayout.LayoutParams(width, height));
+    }
+
+    @Override
+    protected void dispatchDraw(android.graphics.Canvas canvas) {
+        super.dispatchDraw(canvas);
+        // Glass: leichte Lichtkante auf App-Kacheln (Ordner haben ihr eigenes Glas).
+        if (LiquidGlass.on && tile.kind != Tile.FOLDER) {
+            edgeBox.set(0, 0, getWidth(), getHeight());
+            LiquidGlass.edge(canvas, edgeBox, radius, LiquidGlass.density(), 0.5f);
+        }
     }
 
     /** Weicher, breiter Lichtschein: langsam ansteigend, kurze helle Mitte. */

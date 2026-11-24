@@ -96,7 +96,10 @@ public final class ControlCenterActivity extends Activity {
         // Abstand liegt in der Liste (body), nicht im Kasten: So reicht die Liste bis an den Rand und die
         // Schatten der Kacheln werden nicht 6 dp hinter den Kacheln abgeschnitten.
         panel.setPadding(0, 0, 0, 0);
-        if (blurred != null && Prefs.blurEnabled(this)) {
+        if (LiquidGlass.on) {
+            // Glass wie tvOS: kein Kasten, jede Kachel ist selbst aus Glas (Wunsch des Nutzers).
+            panel.setBackground(null);
+        } else if (blurred != null && Prefs.blurEnabled(this)) {
             // Milchglas: nur was hinter dem Kasten liegt, weichgezeichnet (W102).
             panel.setBackground(new GlassDrawable(blurred, panel, Ui.dp(this, PANEL_RADIUS_DP),
                     Ui.light ? Color.argb(LiquidGlass.on ? 60 : 150, 238, 240, 244)
@@ -108,7 +111,7 @@ public final class ControlCenterActivity extends Activity {
             pbg.setStroke(Math.max(1, Ui.dp(this, 0.5f)), Ui.MATERIAL_STROKE);
             panel.setBackground(pbg);
         }
-        panel.setElevation(Ui.dp(this, 30));
+        panel.setElevation(LiquidGlass.on ? 0 : Ui.dp(this, 30));
         // Children stay inside their own bounds, so the scrolling list never covers clock and date (B10)
         panel.setClipChildren(true);
         panel.setClipToPadding(false);

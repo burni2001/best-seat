@@ -190,6 +190,29 @@ final class Ui {
         return d;
     }
 
+    /**
+     * Hintergrund für Kacheln und Zeilen: bei Glass ist jede Kachel selbst aus Glas (durchsichtig getönt,
+     * mit Lichtkante), fokussiert weiß mit leichter Kante. Sonst wie rounded().
+     */
+    static GradientDrawable tileBg(int color, float radiusPx) {
+        if (!LiquidGlass.on) return rounded(color, radiusPx);
+        if (color == ROW) {
+            return roundedGlass(light ? Color.argb(105, 255, 255, 255) : Color.argb(62, 150, 190, 235), radiusPx, 1f);
+        }
+        return roundedGlass(color, radiusPx, 0.45f);
+    }
+
+    /** Wie evenShadow, bei Glass ohne Schatten: Er schiene durch die durchsichtige Kachel als dunkler Fleck. */
+    static void tileShadow(android.view.View v) {
+        if (!LiquidGlass.on) {
+            evenShadow(v);
+            return;
+        }
+        if (android.os.Build.VERSION.SDK_INT < 28) return;
+        v.setOutlineSpotShadowColor(Color.TRANSPARENT);
+        v.setOutlineAmbientShadowColor(Color.TRANSPARENT);
+    }
+
     static GradientDrawable rounded(int color, float radiusPx) {
         GradientDrawable d = new GradientDrawable();
         d.setColor(color);
@@ -218,10 +241,10 @@ final class Ui {
         row.setClickable(true);
         // tvOS-Listen: Radius 16 px; Fokus weiß 90 % mit dunkler Schrift.
         float r = dp(context, 9);
-        row.setBackground(rounded(ROW, r));
-        evenShadow(row);
+        row.setBackground(tileBg(ROW, r));
+        tileShadow(row);
         row.setOnFocusChangeListener((v, has) -> {
-            v.setBackground(rounded(has ? ROW_FOCUSED : ROW, r));
+            v.setBackground(tileBg(has ? ROW_FOCUSED : ROW, r));
             tint((LinearLayout) v, has);
             v.animate().scaleX(has ? 1.03f : 1f).scaleY(has ? 1.03f : 1f).translationZ(has ? dp(context, 8) : 0)
                     .setDuration(140).start();
@@ -255,9 +278,9 @@ final class Ui {
         pill.setFocusable(true);
         pill.setClickable(true);
         float r = dp(context, 19);
-        pill.setBackground(rounded(ROW, r));
+        pill.setBackground(tileBg(ROW, r));
         pill.setOnFocusChangeListener((v, has) -> {
-            v.setBackground(rounded(has ? ROW_FOCUSED : ROW, r));
+            v.setBackground(tileBg(has ? ROW_FOCUSED : ROW, r));
             ((TextView) v).setTextColor(has ? TEXT_ON_FOCUS : TEXT);
             v.animate().scaleX(has ? 1.08f : 1f).scaleY(has ? 1.08f : 1f).setDuration(120).start();
         });

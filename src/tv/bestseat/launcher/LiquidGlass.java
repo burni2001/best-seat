@@ -7,6 +7,7 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RectF;
 import android.graphics.Shader;
+import android.graphics.SweepGradient;
 import android.graphics.drawable.GradientDrawable;
 
 /**
@@ -46,57 +47,69 @@ final class LiquidGlass {
     }
 
     static void draw(Canvas c, Path shape, RectF r, float density, float strength) {
+        draw(c, shape, r, density, strength, true);
+    }
+
+    /** Nur die Lichtkante, ohne Glanz und Tönung: für App-Kacheln (leichter Glaseffekt). */
+    static void edge(Canvas c, RectF r, float radius, float density, float strength) {
+        Path p = new Path();
+        p.addRoundRect(r, radius, radius, Path.Direction.CW);
+        draw(c, p, r, density, strength, false);
+    }
+
+    /**
+     * Wie die Vorlagen des Nutzers: kein gleich breiter Innenrahmen, sondern Licht, das nur an den
+     * Kanten oben links und (schwächer) unten rechts auf das Glas fällt und an den Seiten fast verschwindet.
+     * Dazu ein weicher Saum nach innen an denselben Stellen und ein schwacher Glanz oben.
+     */
+    private static void draw(Canvas c, Path shape, RectF r, float density, float strength, boolean body) {
         if (r.width() <= 0 || r.height() <= 0) return;
         boolean light = Ui.light;
         float s = Math.max(0f, Math.min(1f, strength));
-
-        // Glanz: oberes Drittel leicht aufgehellt, als wäre die Fläche gewölbt.
-        // Dunkel: leichter Cyan-Schimmer wie die tvOS-Gläser (#1cbbff, aus dem Design System des Nutzers).
-        int sheenTop = light ? Color.argb(Math.round(140 * s), 255, 255, 255)
-                : Color.argb(Math.round(72 * s), 160, 222, 255);
-        SHEEN.setShader(new LinearGradient(0, r.top, 0, r.top + r.height() * 0.5f,
-                sheenTop, Color.TRANSPARENT, Shader.TileMode.CLAMP));
+        int tint = light ? Color.rgb(255, 255, 255) : Color.rgb(200, 236, 255);
         c.save();
         c.clipPath(shape);
-        c.drawRect(r, SHEEN);
-        if (!light) {
-            CYAN.setColor(Color.argb(Math.round(20 * s), 28, 187, 255));
-            c.drawRect(r, CYAN);
+        if (body) {
+            // Glanz oben: schwach, damit die Fläche gewölbt wirkt.
+            int sheenTop = Color.argb(Math.round((light ? 70 : 38) * s), Color.red(tint), Color.green(tint), Color.blue(tint));
+            SHEEN.setShader(new LinearGradient(0, r.top, 0, r.top + r.height() * 0.45f,
+                    sheenTop, Color.TRANSPARENT, Shader.TileMode.CLAMP));
+            c.drawRect(r, SHEEN);
+            if (!light) {
+                CYAN.setColor(Color.argb(Math.round(14 * s), 28, 187, 255));
+                c.drawRect(r, CYAN);
+            }
         }
-
-        // Innerer Lichtsaum: breit und schwach, deutet die Brechung am Rand an.
-        float glowW = 9f * density;
-        GLOW.setStrokeWidth(glowW);
-        int glowA = Math.round((light ? 110 : 62) * s);
-        GLOW.setShader(new LinearGradient(r.left, r.top, r.right, r.bottom,
-                light ? new int[] {Color.argb(glowA, 255, 255, 255), Color.argb(glowA / 4, 255, 255, 255),
-                        Color.argb(glowA / 2, 255, 255, 255)}
-                        : new int[] {Color.argb(glowA, 170, 228, 255), Color.argb(glowA / 4, 120, 210, 255),
-                        Color.argb(glowA / 2, 170, 228, 255)},
-                new float[] {0f, 0.55f, 1f}, Shader.TileMode.CLAMP));
-        c.drawPath(shape, GLOW);
-
-        // Reflex unten: schwacher Lichtsaum am unteren Rand, wie durchs Glas gefallenes Licht.
-        int lowA = Math.round((light ? 70 : 40) * s);
-        SHEEN.setShader(new LinearGradient(0, r.bottom, 0, r.bottom - r.height() * 0.22f,
-                light ? Color.argb(lowA, 255, 255, 255) : Color.argb(lowA, 170, 228, 255),
-                Color.TRANSPARENT, Shader.TileMode.CLAMP));
-        c.drawRect(r, SHEEN);
-        c.restore();
-
-        // Lichtrand: dünn, hell oben links, fast weg in der Mitte, wieder heller unten rechts.
-        float rimW = Math.max(1f, 1.5f * density);
-        // Doppelt so breit und innen beschnitten: sichtbar bleibt die innere Hälfte, auch an runden Ecken.
+        // Weicher Saum nach innen, nur wo das Licht einfällt: mehrere Striche, außen schmal und hell,
+        // innen breit und schwach. Die Hälfte jedes Strichs liegt außerhalb und wird abgeschnitten.
+        float cx = r.centerX(), cy = r.centerY();
+        float[] widths = body ? new float[] {14f, 8f, 4f} : new float[] {6f, 3f};
+        int[] alphas = body ? new int[] {light ? 30 : 22, light ? 40 : 30, light ? 55 : 42} : new int[] {26, 40};
+        for (int i = 0; i < widths.length; i++) {
+            GLOW.setStrokeWidth(widths[i] * density);
+            GLOW.setShader(lightSweep(cx, cy, Math.round(alphas[i] * s), tint));
+            c.drawPath(shape, GLOW);
+        }
+        // Lichtkante: dünn und hell oben links, schwächer unten rechts, an den Seiten fast weg.
+        float rimW = Math.max(1f, 1.3f * density);
         RIM.setStrokeWidth(rimW * 2f);
-        int hi = Math.round((light ? 210 : 200) * s);
-        RIM.setShader(new LinearGradient(r.left, r.top, r.right, r.bottom,
-                new int[] {Color.argb(hi, 255, 255, 255), Color.argb(Math.round(14 * s), 255, 255, 255),
-                        Color.argb(Math.round(hi * 0.55f), 255, 255, 255)},
-                new float[] {0f, 0.5f, 1f}, Shader.TileMode.CLAMP));
-        c.save();
-        c.clipPath(shape);
+        RIM.setShader(lightSweep(cx, cy, Math.round((light ? 230 : 215) * s), Color.WHITE));
         c.drawPath(shape, RIM);
         c.restore();
+    }
+
+    /**
+     * Verlauf rund um die Mitte (0° = rechts, im Uhrzeigersinn): hell bei 225° (oben links),
+     * halb so hell bei 45° (unten rechts), dazwischen fast durchsichtig.
+     */
+    private static SweepGradient lightSweep(float cx, float cy, int alpha, int rgb) {
+        int r = Color.red(rgb), g = Color.green(rgb), b = Color.blue(rgb);
+        int lo = Color.argb(Math.round(alpha * 0.06f), r, g, b);
+        return new SweepGradient(cx, cy,
+                new int[] {Color.argb(Math.round(alpha * 0.18f), r, g, b), Color.argb(Math.round(alpha * 0.5f), r, g, b),
+                        lo, lo, Color.argb(Math.round(alpha * 0.35f), r, g, b), Color.argb(alpha, r, g, b),
+                        Color.argb(Math.round(alpha * 0.35f), r, g, b), lo, Color.argb(Math.round(alpha * 0.18f), r, g, b)},
+                new float[] {0f, 0.125f, 0.27f, 0.47f, 0.55f, 0.625f, 0.70f, 0.85f, 1f});
     }
 
     /** Abgerundete Fläche (wie Ui.rounded), bei Liquid Glass mit Glanz und Lichtrand. */

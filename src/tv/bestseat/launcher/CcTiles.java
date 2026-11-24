@@ -138,8 +138,8 @@ final class CcTiles {
         b.setClickable(true);
         b.setContentDescription(title);
         float r = Ui.dp(cc, TILE_RADIUS_DP);
-        b.setBackground(Ui.rounded(Ui.ROW, r));
-        Ui.evenShadow(b);
+        b.setBackground(Ui.tileBg(Ui.ROW, r));
+        Ui.tileShadow(b);
         final String id = buildingId;
         ControlIcons.Icon icon = new ControlIcons.Icon(id, iconColor(id, false));
         if (id != null) {
@@ -151,7 +151,7 @@ final class CcTiles {
         int is = Ui.dp(cc, 22);
         b.addView(iv, new FrameLayout.LayoutParams(is, is, Gravity.CENTER));
         b.setOnFocusChangeListener((v, has) -> {
-            v.setBackground(Ui.rounded(has ? Ui.ROW_FOCUSED : Ui.ROW, r));
+            v.setBackground(Ui.tileBg(has ? Ui.ROW_FOCUSED : Ui.ROW, r));
             icon.setColor(iconColor(id, has));
             v.animate().scaleX(has ? FOCUS_SCALE : 1f).scaleY(has ? FOCUS_SCALE : 1f)
                     .translationZ(has ? Ui.dp(cc, 10) : 0).setDuration(Ui.ms(140)).start();
@@ -197,8 +197,8 @@ final class CcTiles {
         b.setFocusable(true);
         b.setClickable(true);
         float r = Ui.dp(cc, TILE_RADIUS_DP);
-        b.setBackground(Ui.rounded(Ui.ROW, r));
-        Ui.evenShadow(b);
+        b.setBackground(Ui.tileBg(Ui.ROW, r));
+        Ui.tileShadow(b);
         final String id = buildingId;
         ControlIcons.Icon icon = new ControlIcons.Icon(id, iconColor(id, false));
         if (id != null) {
@@ -221,7 +221,7 @@ final class CcTiles {
         b.addView(t, big ? new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT) : new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         b.setOnFocusChangeListener((v, has) -> {
-            v.setBackground(Ui.rounded(has ? Ui.ROW_FOCUSED : Ui.ROW, r));
+            v.setBackground(Ui.tileBg(has ? Ui.ROW_FOCUSED : Ui.ROW, r));
             t.setTextColor(has ? Ui.TEXT_ON_FOCUS : Ui.TEXT);
             icon.setColor(iconColor(id, has));
             // Zu langer Text läuft auf der fokussierten Kachel durch (B12).
