@@ -83,7 +83,11 @@ final class AppList {
             }
             String label = tv.bestseat.launcher.AppRepository.displayLabel(activity.packageName,
                     String.valueOf(info.loadLabel(pm)).trim());
-            Drawable banner = activity.loadBanner(pm);
+            // Eigenes Kachelbild (W126) hat Vorrang, wie auf dem Home Screen.
+            Drawable banner = tv.bestseat.launcher.LauncherBridge.customImage(context, activity.packageName);
+            if (banner == null) {
+                banner = activity.loadBanner(pm);
+            }
             if (banner == null) {
                 banner = app.loadBanner(pm);
             }

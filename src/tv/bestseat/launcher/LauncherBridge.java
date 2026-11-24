@@ -73,4 +73,9 @@ public final class LauncherBridge {
             Runnable open) {
         return VpnGate.check(activity, pkg, label, launch, open);
     }
+
+    /** Eigenes Kachelbild der App (W126) oder null. */
+    public static Drawable customImage(Context context, String pkg) {
+        return TileImages.load(context, pkg);
+    }
 }
