@@ -19,6 +19,7 @@ public final class Prefs {
     private static final String K_REDUCE_MOTION = "reduce_motion";
     private static final String K_SAVER_CLOCK = "saver_clock";
     private static final String K_SAVER_DELAY = "saver_delay";
+    private static final String K_SAVER_IN_APPS = "saver_in_apps";
     private static final String K_SAVER_LOCATION = "saver_location";
     private static final String K_SAVER_SOURCE = "saver_source";
     private static final String K_SAVER_TOPIC = "saver_topic";
@@ -130,6 +131,15 @@ public final class Prefs {
 
     static void setSaverDelay(Context c, int value) {
         put(c, K_SAVER_DELAY, value);
+    }
+
+    /** Schoner auch starten, wenn eine andere App untätig vorne ist (W133). */
+    static boolean saverInApps(Context c) {
+        return getBool(c, K_SAVER_IN_APPS, true);
+    }
+
+    static void setSaverInApps(Context c, boolean value) {
+        put(c, K_SAVER_IN_APPS, value);
     }
 
     static boolean saverClock(Context c) {

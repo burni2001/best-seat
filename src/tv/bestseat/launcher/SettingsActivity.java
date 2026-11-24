@@ -643,7 +643,14 @@ public final class SettingsActivity extends Activity {
             for (int i = 0; i < Prefs.SAVER_DELAYS.length; i++) if (Prefs.SAVER_DELAYS[i] == current) return i;
             return 0;
         }, i -> Prefs.setSaverDelay(this, Prefs.SAVER_DELAYS[i]),
-                "Choose how long the home screen waits before the screensaver starts.", "saver_delay");
+                "Choose how long to wait without input before the screensaver starts.", "saver_delay");
+        Switch inApps = Ui.toggle(this);
+        inApps.setChecked(Prefs.saverInApps(this));
+        row("Start in idle apps", inApps, "Start the screensaver when an app sits idle without playing.")
+                .setOnClickListener(v -> {
+                    Prefs.setSaverInApps(this, !Prefs.saverInApps(this));
+                    inApps.setChecked(Prefs.saverInApps(this));
+                });
 
         if (source != Prefs.SAVER_CLOCK || source == Prefs.SAVER_AERIALS) section("Overlays");
         if (source != Prefs.SAVER_CLOCK) {

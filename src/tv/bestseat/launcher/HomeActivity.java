@@ -222,6 +222,7 @@ public final class HomeActivity extends Activity
     protected void onStart() {
         super.onStart();
         visibleSince = android.os.SystemClock.uptimeMillis();
+        IdleWatch.stop();
         ghostPulseUntil = visibleSince + GHOST_PULSE_MS;
         refreshGhosts();
         visibleHome = new java.lang.ref.WeakReference<>(this);
@@ -238,6 +239,8 @@ public final class HomeActivity extends Activity
     protected void onStop() {
         super.onStop();
         visibleSince = 0;
+        // Andere App vorne: Leerlauf dort beobachten (W133).
+        IdleWatch.start(this);
         ghostPulseUntil = 0;
         refreshGhosts();
         if (visibleHome != null && visibleHome.get() == this) visibleHome = null;
