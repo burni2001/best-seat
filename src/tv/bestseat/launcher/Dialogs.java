@@ -100,7 +100,8 @@ final class Dialogs {
         boolean narrow = widthDp <= 240;
         int p = Ui.dp(activity, narrow ? 0 : 16);
         panel.setPadding(p, 0, p, Ui.dp(activity, narrow ? 5 : 12));
-        float radius = Ui.dp(activity, 15);
+        // Glass: so rund wie die große Kachel im Kontrollzentrum (24 dp).
+        float radius = Ui.dp(activity, LiquidGlass.on ? 24 : 15);
         android.graphics.drawable.GradientDrawable panelBg = Ui.material(activity, radius);
         // Glass: eigenes Milchglas mit Lupe statt der Fensterunschärfe des TVs, die nur grob in Blöcken
         // rechnet und durch das durchsichtige Menü als eckige Rechtecke durchschien.
