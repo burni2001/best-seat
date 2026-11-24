@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.graphics.Color;
-import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.net.ConnectivityManager;
 import android.net.Network;
@@ -13,7 +12,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
-import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
@@ -21,9 +19,7 @@ import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
-import android.text.TextUtils;
 import android.widget.ScrollView;
-import android.widget.TextClock;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -76,7 +72,7 @@ public final class ControlCenterActivity extends Activity {
         // Per Intent auf der Startseite: die Startseite öffnet das CC neu, mit Milchglas-Hintergrund.
         if (homeBlur == null && ACTION.equals(getIntent().getAction()) && HomeActivity.openControlCenterFromIntent()) {
             finish();
-            overridePendingTransition(0, 0);
+            Ui.transition(this, 0, 0);
             return;
         }
         Ui.apply(this);
@@ -232,7 +228,7 @@ public final class ControlCenterActivity extends Activity {
         // das HOME selbst abfängt), schließt er es wie der zweite Doppelklick (W103).
         if (intent.getBooleanExtra(EXTRA_CLOSE, false) || (ACTION.equals(intent.getAction()) && wasJustOpen())) {
             // wasJustOpen statt resumedNow: Android pausiert die Aktivität vor onNewIntent.
-            overridePendingTransition(0, 0);
+            Ui.transition(this, 0, 0);
             close();
         }
     }
@@ -391,7 +387,7 @@ public final class ControlCenterActivity extends Activity {
             startActivity(new Intent(this, HomeActivity.class)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK));
             finish();
-            overridePendingTransition(0, 0);
+            Ui.transition(this, 0, 0);
             return;
         }
         // Rückwärts: Kasten fließt in die Pille zurück, das Schalter-Symbol zieht sich ein.
@@ -415,7 +411,7 @@ public final class ControlCenterActivity extends Activity {
             pill.setBare(true);
             root.post(() -> {
                 finish();
-                overridePendingTransition(0, 0);
+                Ui.transition(this, 0, 0);
             });
         }).start();
     }
@@ -684,13 +680,14 @@ public final class ControlCenterActivity extends Activity {
         try {
             startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
             finish();
-            overridePendingTransition(0, 0);
+            Ui.transition(this, 0, 0);
         } catch (RuntimeException e) {
             Log.w(TAG, "launch failed: " + intent, e);
             Toast.makeText(this, "Not available", Toast.LENGTH_SHORT).show();
         }
     }
 
+    @SuppressWarnings("deprecation") // getAllNetworks: der Ersatz per Callback lohnt für eine Momentabfrage nicht.
     private boolean vpnConnected() {
         try {
             ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);

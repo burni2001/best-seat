@@ -1,9 +1,9 @@
 package tv.bestseat.launcher;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
-import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.text.TextUtils;
 import android.util.TypedValue;
@@ -14,6 +14,15 @@ import android.widget.TextView;
 
 /** Farben und Bausteine. Hell oder dunkel je nach Einstellung „Appearance“ (Ui.apply in onCreate). */
 final class Ui {
+
+    /**
+     * Fensterübergang setzen. overridePendingTransition ist ab Android 14 veraltet; der Ersatz
+     * (overrideActivityTransition) fehlt aber vor Android 14, daher bewusst hier an einer Stelle.
+     */
+    @SuppressWarnings("deprecation")
+    static void transition(Activity a, int enter, int exit) {
+        a.overridePendingTransition(enter, exit);
+    }
 
     static int BACKGROUND;
     static int PANEL;

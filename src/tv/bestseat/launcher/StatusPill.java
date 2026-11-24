@@ -3,7 +3,6 @@ package tv.bestseat.launcher;
 import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.graphics.Color;
-import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -236,9 +235,5 @@ final class StatusPill extends LinearLayout {
 
     private int dp(float v) {
         return Ui.dp(activity, v);
-    }
-
-    static View spacer(Activity a) {
-        return new View(a);
     }
 }

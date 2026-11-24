@@ -4,26 +4,18 @@ import android.app.Activity;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.content.pm.LauncherApps;
 import android.graphics.Bitmap;
 import android.graphics.Color;
-import android.animation.ValueAnimator;
-import android.graphics.RenderEffect;
-import android.graphics.Shader;
-import android.graphics.drawable.ColorDrawable;
-import android.graphics.drawable.GradientDrawable;
 import android.net.ConnectivityManager;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.view.WindowManager;
 import android.os.SystemClock;
 import android.os.Handler;
 import android.os.Looper;
-import android.os.Process;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.Gravity;
@@ -31,9 +23,7 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.TextClock;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -276,6 +266,7 @@ public final class HomeActivity extends Activity
         return true;
     }
 
+    /** Auch für die Taste auf der Startseite: gleicher Weg wie Doppel-Home, sonst fehlt das Abbild für das Milchglas (B52). */
     private void openControlCenter(String overPkg) {
         ControlCenterActivity.homeBlur = null;
         // Milchglas des Kontrollzentrums: Fensterinhalt der Startseite so, wie er gerade auf dem Bildschirm
@@ -304,7 +295,7 @@ public final class HomeActivity extends Activity
             cc.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).putExtra(ControlCenterActivity.EXTRA_OVER_APP, overPkg);
         }
         startActivity(cc, android.app.ActivityOptions.makeCustomAnimation(this, 0, 0).toBundle());
-        overridePendingTransition(0, 0);
+        Ui.transition(this, 0, 0);
     }
 
     // ---------------------------------------------------------------- Oberfläche
@@ -702,18 +693,13 @@ public final class HomeActivity extends Activity
         if (topContent != null) topContent.animate().alpha(0f).setDuration(Ui.ms(1200)).start();
     }
 
-    private void openControlCenter() {
-        // Gleicher Weg wie Doppel-Home, sonst fehlt das Abbild für das Milchglas (B52).
-        openControlCenter(null);
-    }
-
     private void startScreensaver() {
         if (!resumed) return;
         Log.i(TAG, "idle, starting screensaver");
         try {
             startActivity(new Intent(this, ScreensaverActivity.class)
                     .putExtra(ScreensaverActivity.EXTRA_IDLE_SINCE, lastInput));
-            overridePendingTransition(android.R.anim.fade_in, 0);
+            Ui.transition(this, android.R.anim.fade_in, 0);
         } catch (RuntimeException e) {
             Log.w(TAG, "screensaver failed", e);
         }
@@ -782,7 +768,7 @@ public final class HomeActivity extends Activity
             for (int i = 0; i < tileViews.size(); i++) {
                 if (!tileViews.get(i).hasFocus()) continue;
                 if (i % columns == columns - 1 || i == tileViews.size() - 1) {
-                    if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) openControlCenter();
+                    if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) openControlCenter(null);
                     return true;
                 }
                 break;
@@ -806,13 +792,13 @@ public final class HomeActivity extends Activity
             int columns = Prefs.columns(this);
             for (int i = 0; i < tileViews.size() && i < columns; i++) {
                 if (!tileViews.get(i).hasFocus()) continue;
-                if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) openControlCenter();
+                if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) openControlCenter(null);
                 return true;
             }
         }
         // Pfeil hoch auf einer Top-Shelf-Karte: Kontrollzentrum (Wunsch des Nutzers, wie die Statuspille bei tvOS).
         if (code == KeyEvent.KEYCODE_DPAD_UP && topShelf.cardsFocused()) {
-            if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) openControlCenter();
+            if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) openControlCenter(null);
             return true;
         }
         // Pfeil runter in eine kürzere letzte Reihe: auf deren letzte Kachel statt ins Leere.
@@ -830,7 +816,7 @@ public final class HomeActivity extends Activity
         }
         // Menü-Taste öffnet das Kontrollzentrum (Kachelmenü: langes OK).
         if (code == KeyEvent.KEYCODE_MENU) {
-            if (event.getAction() == KeyEvent.ACTION_UP) openControlCenter();
+            if (event.getAction() == KeyEvent.ACTION_UP) openControlCenter(null);
             return true;
         }
         return super.dispatchKeyEvent(event);

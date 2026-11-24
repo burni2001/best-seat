@@ -79,6 +79,7 @@ final class GlassDrawable extends Drawable {
         image.setColorFilter(colorFilter);
     }
 
+    @SuppressWarnings("deprecation") // Pflicht-Methode von Drawable, nur noch formal veraltet.
     @Override
     public int getOpacity() {
         return PixelFormat.TRANSLUCENT;

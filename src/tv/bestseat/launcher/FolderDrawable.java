@@ -107,6 +107,7 @@ final class FolderDrawable extends Drawable {
         bg.setColorFilter(filter);
     }
 
+    @SuppressWarnings("deprecation") // Pflicht-Methode von Drawable, nur noch formal veraltet.
     @Override
     public int getOpacity() {
         return PixelFormat.TRANSLUCENT;

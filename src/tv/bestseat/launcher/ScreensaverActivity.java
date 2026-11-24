@@ -7,7 +7,6 @@ import android.graphics.Color;
 import android.graphics.ImageDecoder;
 import android.graphics.Matrix;
 import android.graphics.Paint;
-import android.graphics.Typeface;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.Handler;
@@ -272,7 +271,7 @@ public final class ScreensaverActivity extends Activity implements SurfaceHolder
     private void exit() {
         if (isFinishing()) return;
         finish();
-        overridePendingTransition(0, android.R.anim.fade_out);
+        Ui.transition(this, 0, android.R.anim.fade_out);
     }
 
     // ---------------------------------------------------------------- Surface

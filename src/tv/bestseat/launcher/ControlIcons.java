@@ -189,6 +189,7 @@ final class ControlIcons {
             fill.setColorFilter(filter);
         }
 
+        @SuppressWarnings("deprecation") // Pflicht-Methode von Drawable, nur noch formal veraltet.
         @Override
         public int getOpacity() {
             return PixelFormat.TRANSLUCENT;

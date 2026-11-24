@@ -60,7 +60,6 @@ final class TopShelf {
     private TextView shelfSection;
     private LinearLayout cardRow;
     private CardScrollView cardScroll;
-    private TextView cardTitle;
     private String shelfKey;
     private Runnable pendingShelfLoad;
 
@@ -192,12 +191,7 @@ final class TopShelf {
         cardRow.setClipToPadding(false);
         cardScroll.addView(cardRow);
         contentGroup.addView(cardScroll);
-        cardTitle = Ui.text(home, "", 16, Ui.TEXT, true);
-        cardTitle.setPadding(Ui.dp(home, HomeActivity.SIDE_DP), 0, Ui.dp(home, HomeActivity.SIDE_DP), 0);
-        cardTitle.setShadowLayer(8, 0, 1, Color.BLACK);
-        // Keine Textzeile unter den Inhaltskarten (B17); cardTitle bleibt unsichtbar im Code.
-        cardTitle.setVisibility(View.GONE);
-        contentGroup.addView(cardTitle);
+        // Keine Textzeile unter den Inhaltskarten (B17).
         FrameLayout.LayoutParams cg = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP);
         cg.topMargin = Ui.dp(home, 44) - sh;
@@ -567,7 +561,6 @@ final class TopShelf {
         // Über den Karten nur die Art des Inhalts (z. B. „Continue watching“), nicht der App-Name (tvOS).
         shelfApp.setText(sectionTitle(tile, items.get(0)));
         shelfSection.setText("");
-        cardTitle.setText("");
         if (heroGroup.getVisibility() == View.VISIBLE) {
             heroGroup.setVisibility(View.GONE);
             contentGroup.setAlpha(0f);
@@ -607,17 +600,12 @@ final class TopShelf {
                 card.focus(has, home.lastDx);
                 if (has) {
                     rememberedCard = cardRow.indexOfChild(card);
-                    String t = item.title != null ? item.title : "";
-                    if (item.subtitle != null && !item.subtitle.isEmpty()) t += "  ·  " + item.subtitle;
-                    cardTitle.setText(t);
                     shelfApp.setText(sectionTitle(tile, item));
                     // Fokussierte Karte links ausrichten (wie tvOS), letzte Karten bleiben am Ende.
                     cardScroll.smoothScrollTo(Math.max(0, card.getLeft() - cardScroll.getPaddingLeft()), 0);
                     Bitmap bmp = Images.memory(item.image);
                     if (bmp != null && !matchingBackground()) setBackdrop(new BitmapDrawable(home.getResources(), bmp), item.image);
                     home.scroll.animateTo(0);
-                } else if (!cardRow.hasFocus()) {
-                    cardTitle.setText("");
                 }
             });
             card.setOnClickListener(v -> openItem(tile, item));

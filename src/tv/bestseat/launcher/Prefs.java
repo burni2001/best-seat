@@ -350,13 +350,4 @@ public final class Prefs {
     private static String e(int codePoint) {
         return new String(Character.toChars(codePoint));
     }
-
-    static int userAvatar(Context c) {
-        int i = Profiles.current(c).avatar;
-        return i >= 0 && i < AVATARS.length ? i : 0;
-    }
-
-    static void setUserAvatar(Context c, int index) {
-        Profiles.update(c, Profiles.currentId(c), null, index);
-    }
 }

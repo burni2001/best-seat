@@ -90,6 +90,7 @@ final class DockDrawable extends Drawable {
         fill.setColorFilter(filter);
     }
 
+    @SuppressWarnings("deprecation") // Pflicht-Methode von Drawable, nur noch formal veraltet.
     @Override
     public int getOpacity() {
         return PixelFormat.TRANSLUCENT;

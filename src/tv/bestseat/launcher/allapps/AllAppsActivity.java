@@ -5,9 +5,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Color;
-import android.graphics.Typeface;
 import android.graphics.drawable.BitmapDrawable;
-import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -539,6 +537,7 @@ public class AllAppsActivity extends Activity {
         return super.onKeyDown(keyCode, event);
     }
 
+    @SuppressWarnings("deprecation") // Zurück-Taste der Fernbedienung; OnBackInvokedCallback erst ab Android 13.
     @Override
     public void onBackPressed() {
         if (menuOpen) {

@@ -419,6 +419,7 @@ final class Dialogs {
         return row;
     }
 
+    @SuppressWarnings("deprecation") // versionCode: getLongVersionCode gibt es erst ab Android 9.
     static void about(Activity activity) {
         Panel p = panel(activity, "Best Seat", 460);
         String version;

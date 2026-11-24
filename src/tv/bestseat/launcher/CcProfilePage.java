@@ -22,11 +22,6 @@ final class CcProfilePage {
         this.cc = cc;
     }
 
-    /** Profilbild in der Pille neu zeichnen. */
-    private void styleHeaderAvatar(boolean focused) {
-        cc.pill.refreshAvatar();
-    }
-
     boolean isProfileSub() {
         Object t = cc.body.getTag();
         return t != null && String.valueOf(t).startsWith("profile_");
@@ -177,7 +172,7 @@ final class CcProfilePage {
         cc.startActivity(new Intent(cc, HomeActivity.class)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK));
         cc.finish();
-        cc.overridePendingTransition(0, 0);
+        Ui.transition(cc, 0, 0);
     }
 
     /** Aktuelles Profil bearbeiten: Profilbild, Name, Entfernen. */
@@ -233,7 +228,7 @@ final class CcProfilePage {
             });
             a.setOnClickListener(v -> {
                 Profiles.setPicture(cc, me.id, emoji, null);
-                styleHeaderAvatar(false);
+                cc.pill.refreshAvatar();
                 showProfile();
             });
             if (emoji.equals(current) && focus == null) focus = a;
@@ -261,14 +256,14 @@ final class CcProfilePage {
             });
             a.setOnClickListener(v -> {
                 Profiles.setPicture(cc, me.id, null, color);
-                styleHeaderAvatar(false);
+                cc.pill.refreshAvatar();
                 showEditProfile();
                 focusColor(color);
             });
         }
         cc.wideRow("Change name", () -> askProfileName("Profile name", Prefs.userName(cc), n -> {
             Prefs.setUserName(cc, n);
-            styleHeaderAvatar(false);
+            cc.pill.refreshAvatar();
             showEditProfile();
         }));
         if (Profiles.all(cc).size() > 1) cc.wideRow("Remove profile", this::confirmRemoveProfile);
@@ -325,7 +320,7 @@ final class CcProfilePage {
         String id = Profiles.currentId(cc);
         android.app.Dialog d = Avatars.chooser(cc, current, emoji -> {
             Profiles.setPicture(cc, id, emoji, null);
-            styleHeaderAvatar(false);
+            cc.pill.refreshAvatar();
             showEditProfile();
         });
         d.setOnDismissListener(x -> cc.poke());
