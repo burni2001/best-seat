@@ -26,7 +26,6 @@ final class LiquidGlass {
     private static final Paint SHEEN = new Paint(Paint.ANTI_ALIAS_FLAG);
     private static final Paint RIM = new Paint(Paint.ANTI_ALIAS_FLAG);
     private static final Paint GLOW = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private static final Paint CYAN = new Paint(Paint.ANTI_ALIAS_FLAG);
 
     static {
         RIM.setStyle(Paint.Style.STROKE);
@@ -66,7 +65,8 @@ final class LiquidGlass {
         if (r.width() <= 0 || r.height() <= 0) return;
         boolean light = Ui.light;
         float s = Math.max(0f, Math.min(1f, strength));
-        int tint = light ? Color.rgb(255, 255, 255) : Color.rgb(200, 236, 255);
+        // Neutral weiß: Der Blaustich wirkte im Dunkeln zu kräftig (Wunsch des Nutzers); Farbe kommt nur vom Hintergrund.
+        int tint = Color.WHITE;
         c.save();
         c.clipPath(shape);
         if (body) {
@@ -75,10 +75,6 @@ final class LiquidGlass {
             SHEEN.setShader(new LinearGradient(0, r.top, 0, r.top + r.height() * 0.45f,
                     sheenTop, Color.TRANSPARENT, Shader.TileMode.CLAMP));
             c.drawRect(r, SHEEN);
-            if (!light) {
-                CYAN.setColor(Color.argb(Math.round(14 * s), 28, 187, 255));
-                c.drawRect(r, CYAN);
-            }
         }
         // Weicher Saum nach innen, nur wo das Licht einfällt: mehrere Striche, außen schmal und hell,
         // innen breit und schwach. Die Hälfte jedes Strichs liegt außerhalb und wird abgeschnitten.
