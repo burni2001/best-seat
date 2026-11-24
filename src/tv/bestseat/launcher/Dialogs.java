@@ -283,7 +283,12 @@ final class Dialogs {
 
     /** tvOS-Hinweisfenster: 504 px breit, Radius 48, Titel Bold 31, Text Medium 25, Knöpfe 440×66. */
     static Panel alert(Activity activity, String title, String message) {
-        Panel p = panel(activity, null, 252);
+        return alert(activity, title, message, 252);
+    }
+
+    /** Hinweisfenster in anderer Breite (z. B. mit Eingabefeld und QR-Code). */
+    static Panel alert(Activity activity, String title, String message, int widthDp) {
+        Panel p = panel(activity, null, widthDp);
         LinearLayout box = (LinearLayout) p.box;
         box.setBackground(Ui.material(activity, Ui.dp(activity, 24)));
         box.setOutlineProvider(new RoundedOutline(Ui.dp(activity, 24)));

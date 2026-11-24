@@ -1011,72 +1011,52 @@ public final class HomeActivity extends Activity
             refreshTiles(tile.key);
         });
         String url = server.start();
-        Dialogs.Panel p = Dialogs.panel(this, "Change Image", 560);
+        // Aufbau wie die übrigen Eingabefenster (askText): Titel mittig, Text, Feld, Knöpfe untereinander.
+        Dialogs.Panel p = Dialogs.alert(this, "Change Image", url != null
+                ? "Type the address of an image, or scan the code to upload a picture from your phone."
+                : "Type the address of an image.", 300);
         holder[0] = p;
-
-        LinearLayout top = new LinearLayout(this);
-        top.setOrientation(LinearLayout.HORIZONTAL);
-        top.setGravity(android.view.Gravity.CENTER_VERTICAL);
-        LinearLayout left = new LinearLayout(this);
-        left.setOrientation(LinearLayout.VERTICAL);
-        left.addView(Ui.text(this, "Image address", 14, Ui.TEXT_DIM, true));
+        if (url != null) {
+            android.widget.ImageView qr = new android.widget.ImageView(this);
+            qr.setImageBitmap(qrBitmap(url));
+            qr.setBackground(Ui.rounded(Color.WHITE, Ui.dp(this, 8)));
+            int pad = Ui.dp(this, 4);
+            qr.setPadding(pad, pad, pad, pad);
+            LinearLayout.LayoutParams qp = new LinearLayout.LayoutParams(Ui.dp(this, 132), Ui.dp(this, 132));
+            qp.gravity = android.view.Gravity.CENTER_HORIZONTAL;
+            qp.bottomMargin = Ui.dp(this, 14);
+            p.content.addView(qr, qp);
+        }
         android.widget.EditText input = new android.widget.EditText(this);
         input.setSingleLine(true);
         input.setHint("https://\u2026");
         input.setHintTextColor(Ui.TEXT_DIM);
         input.setTextColor(Ui.TEXT);
         input.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 14.5f);
+        input.setTypeface(Fonts.get(this, Fonts.REGULAR));
         input.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_URI);
         input.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_GO);
         input.setPadding(Ui.dp(this, 12), Ui.dp(this, 8), Ui.dp(this, 12), Ui.dp(this, 8));
         input.setBackground(Ui.rounded(Ui.BUTTON, Ui.dp(this, 8)));
         LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
-        ip.topMargin = Ui.dp(this, 6);
-        left.addView(input, ip);
-        TextView tip = Ui.text(this, "Wide images (16:9) fit best.", 13, Ui.TEXT_DIM, false);
-        tip.setPadding(0, Ui.dp(this, 8), 0, 0);
-        left.addView(tip);
-        top.addView(left, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-
-        if (url != null) {
-            LinearLayout right = new LinearLayout(this);
-            right.setOrientation(LinearLayout.VERTICAL);
-            right.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
-            android.widget.ImageView qr = new android.widget.ImageView(this);
-            qr.setImageBitmap(qrBitmap(url));
-            qr.setBackground(Ui.rounded(Color.WHITE, Ui.dp(this, 8)));
-            int pad = Ui.dp(this, 6);
-            qr.setPadding(pad, pad, pad, pad);
-            right.addView(qr, new LinearLayout.LayoutParams(Ui.dp(this, 150), Ui.dp(this, 150)));
-            TextView scan = Ui.text(this, "Scan to upload a picture", 13, Ui.TEXT_DIM, false);
-            scan.setGravity(android.view.Gravity.CENTER);
-            scan.setPadding(0, Ui.dp(this, 8), 0, 0);
-            right.addView(scan);
-            LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT);
-            rp.leftMargin = Ui.dp(this, 24);
-            top.addView(right, rp);
-        }
-        LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT);
-        tlp.bottomMargin = Ui.dp(this, 14);
-        p.content.addView(top, tlp);
+        ip.bottomMargin = Ui.dp(this, 12);
+        p.content.addView(input, ip);
 
         Runnable useAddress = () -> loadImageFrom(tile, input.getText().toString().trim());
-        Dialogs.actionRow(this, p, "Use This Address", useAddress);
+        Dialogs.alertButton(this, p, "Use Address", useAddress);
         input.setOnEditorActionListener((v, actionId, e) -> {
             p.dialog.dismiss();
             useAddress.run();
             return true;
         });
         if (TileImages.has(this, tile.pkg)) {
-            Dialogs.actionRow(this, p, "Use App Image", () -> {
+            Dialogs.alertButton(this, p, "Use App Image", () -> {
                 TileImages.remove(this, tile.pkg);
                 refreshTiles(tile.key);
             });
         }
-        Dialogs.actionRow(this, p, "Done", () -> { });
+        Dialogs.alertButton(this, p, "Cancel", () -> { });
         show(p);
         // show() setzt den eigenen Schließen-Hörer; der Server endet mit dem Fenster.
         p.dialog.setOnDismissListener(d -> {
