@@ -109,13 +109,6 @@
             </intent-filter>
         </activity>
 
-        <!-- 4K-Test (exportiert, damit er per adb startbar ist; zeigt nur ein Testbild). -->
-        <activity
-            android:name=".FourKTestActivity"
-            android:label="4K test"
-            android:exported="true"
-            android:excludeFromRecents="true"
-            android:theme="@style/PageTheme" />
         <!-- App Switcher: Leiste der zuletzt genutzten Apps (von überall per Intent, z. B. tvQuickActions). -->
         <!-- All Apps (aus dem App Switcher übernommen, 0.6.3), Action für tvQuickActions. -->
         <activity
