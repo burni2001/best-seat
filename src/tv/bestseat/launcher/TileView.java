@@ -34,6 +34,8 @@ final class TileView extends FrameLayout {
     private boolean edgeOn;
     private float sweep = -1f;
     private ValueAnimator sweepAnim;
+    /** Lichtlauf beim Fokus vorerst aus (Wunsch des Nutzers): Glanz und Kante stehen sofort. */
+    private static final boolean SWEEP = false;
 
     private void glassEdge(boolean focused) {
         if (!LiquidGlass.on || tile.kind == Tile.FOLDER) return;
@@ -41,7 +43,7 @@ final class TileView extends FrameLayout {
         sweepAnim = null;
         edgeOn = focused;
         sweep = -1f;
-        if (focused && !Prefs.reduceMotion(getContext())) {
+        if (SWEEP && focused && !Prefs.reduceMotion(getContext())) {
             // Licht läuft unten von links nach rechts und gleichzeitig oben von rechts nach links.
             ValueAnimator a = ValueAnimator.ofFloat(0f, 1f);
             a.setDuration(Ui.ms(320)); // so schnell wie der Fokus-Zoom: nur am Rand wahrnehmbar
