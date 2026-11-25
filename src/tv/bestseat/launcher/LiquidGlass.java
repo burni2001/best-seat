@@ -179,6 +179,16 @@ final class LiquidGlass {
         return Math.max(1, Math.min(245, Math.round(a * f)));
     }
 
+    /**
+     * Deckkraft des unscharfen Bildes unter dem Glas (Lupe). Bis zum Standard voll, darunter wird es
+     * ausgeblendet, sonst bliebe das Glas trotz Regler milchig (CC über die Pfeiltaste, Menüs, Ordner).
+     */
+    static int backdropAlpha() {
+        int v = Math.max(0, Math.min(100, opacity));
+        if (v >= OPACITY_DEFAULT) return 255;
+        return Math.round(255 * (0.1f + 0.9f * v / OPACITY_DEFAULT));
+    }
+
     /** Wie alpha(int), auf eine Farbe angewandt. */
     static int color(int c) {
         return Color.argb(alpha(Color.alpha(c)), Color.red(c), Color.green(c), Color.blue(c));
@@ -274,6 +284,8 @@ final class LiquidGlass {
             map.setScale(root.getWidth() / (float) backdrop.getWidth() / sx,
                     root.getHeight() / (float) backdrop.getHeight() / sy);
             map.postTranslate(-x / sx, -y / sy);
+            // Regler „Glass opacity“ gilt auch für das unscharfe Bild unter dem Glas.
+            image.setAlpha(backdropAlpha());
             if (android.os.Build.VERSION.SDK_INT >= 33 && drawLens(canvas, box, radius, density, backdrop)) return;
             canvas.save();
             canvas.clipPath(clip);
