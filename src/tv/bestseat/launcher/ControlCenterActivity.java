@@ -143,6 +143,7 @@ public final class ControlCenterActivity extends Activity {
         // Uhrzeit und Profilbild stehen jetzt in der Pille oben rechts (StatusPill), nicht mehr im Kasten.
         shown = new java.lang.ref.WeakReference<>(this);
         pill = new StatusPill(this, true);
+        pill.setSolid(glassBackdrop == null);
         pill.avatar.setOnClickListener(v -> profile.showProfile());
         pill.controls.setOnClickListener(v -> showMain());
         ScrollView scroll = new ScrollView(this);

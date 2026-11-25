@@ -52,7 +52,19 @@ final class StatusPill extends LinearLayout {
     /** 0 = Farbe der Startseite, 1 = Farbe im Kontrollzentrum. */
     void setDepth(float f) {
         depth = f;
+        if (!bare && solid && pillBg instanceof LiquidGlass.Rounded) {
+            ((LiquidGlass.Rounded) pillBg).solid(Ui.light ? Color.rgb(238, 240, 244) : Color.rgb(28, 30, 36));
+            return;
+        }
         pillBg.setColor(bare ? Color.TRANSPARENT : pillColor(f));
+    }
+
+    /** Glass without a backdrop (Control Center over another app): same strong tint as the rows, readable. */
+    private boolean solid;
+
+    void setSolid(boolean s) {
+        solid = s;
+        setDepth(depth);
     }
 
     /**
