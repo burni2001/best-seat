@@ -340,7 +340,13 @@ final class Dialogs {
     static Panel alert(Activity activity, String title, String message, int widthDp) {
         Panel p = panel(activity, null, widthDp);
         LinearLayout box = (LinearLayout) p.box;
-        box.setBackground(Ui.material(activity, Ui.dp(activity, 24)));
+        android.graphics.drawable.GradientDrawable boxBg = Ui.material(activity, Ui.dp(activity, 24));
+        // Glass: dasselbe Milchglas wie bei den Menüs, sonst nur halbtransparent ohne Unschärfe (Wunsch des Nutzers).
+        if (LiquidGlass.on && boxBg instanceof LiquidGlass.Rounded) {
+            android.graphics.Bitmap shot = screenBehind(activity);
+            if (shot != null) ((LiquidGlass.Rounded) boxBg).backdrop(shot, box);
+        }
+        box.setBackground(boxBg);
         box.setOutlineProvider(new RoundedOutline(Ui.dp(activity, 24)));
         box.setPadding(Ui.dp(activity, 16), Ui.dp(activity, 24), Ui.dp(activity, 16), Ui.dp(activity, 16));
         TextView t = Ui.text(activity, title, 16, Ui.TEXT, false);
@@ -376,7 +382,8 @@ final class Dialogs {
         TextView text = Ui.text(activity, label, 15, Ui.TEXT, true);
         text.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 14.5f);
         row.addView(text);
-        float r = Ui.dp(activity, 8);
+        // Glass: Knöpfe als Pillen wie die Zeilen der Menüs.
+        float r = Ui.dp(activity, LiquidGlass.on ? 999 : 8);
         row.setBackground(Ui.rounded(Ui.BUTTON, r));
         row.setOnFocusChangeListener((v, has) -> {
             v.setBackground(Ui.rounded(has ? Ui.MENU_FOCUSED : Ui.BUTTON, r));
