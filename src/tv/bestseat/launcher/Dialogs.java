@@ -225,7 +225,11 @@ final class Dialogs {
         TextView t = Ui.text(activity, title, 24, Ui.FOLDER_TITLE, true);
         t.setGravity(Gravity.CENTER);
         t.setPadding(Ui.dp(activity, 15), Ui.dp(activity, 4), Ui.dp(activity, 15), Ui.dp(activity, 5));
-        t.setBackground(Ui.roundedGlass(Ui.FOLDER_PILL, Ui.dp(activity, 6), 0.8f));
+        // Glass: echte Pille aus Glas mit Lupe wie der Kasten (Wunsch des Nutzers); sonst Radius 6 wie tvOS.
+        android.graphics.drawable.GradientDrawable titleBg = Ui.roundedGlass(Ui.FOLDER_PILL,
+                Ui.dp(activity, LiquidGlass.on ? 999 : 6), 0.8f);
+        t.setBackground(titleBg);
+        if (LiquidGlass.on) t.setPadding(Ui.dp(activity, 20), Ui.dp(activity, 5), Ui.dp(activity, 20), Ui.dp(activity, 6));
         LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
         tp.bottomMargin = Ui.dp(activity, 18);
@@ -241,6 +245,7 @@ final class Dialogs {
         // Glass: Der Kasten zeigt das unscharfe Bild dahinter durch eine Lupe (wie die Kacheln im Kontrollzentrum).
         final android.graphics.Bitmap lensShot = LiquidGlass.on ? lensBackdrop(backdrop) : null;
         if (lensShot != null && boxBg instanceof LiquidGlass.Rounded) ((LiquidGlass.Rounded) boxBg).backdrop(lensShot, box);
+        if (lensShot != null && titleBg instanceof LiquidGlass.Rounded) ((LiquidGlass.Rounded) titleBg).backdrop(lensShot, t);
         box.setBackground(boxBg);
         box.setOutlineProvider(new RoundedOutline(Ui.dp(activity, 30)));
         box.setClipToOutline(true);
