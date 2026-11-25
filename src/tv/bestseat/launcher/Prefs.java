@@ -10,6 +10,7 @@ public final class Prefs {
     private static final String K_APPEARANCE = "appearance";
     private static final String K_SETUP_DONE = "setup_done";
     private static final String K_LIQUID_GLASS = "liquid_glass";
+    private static final String K_GLASS_OPACITY = "glass_opacity";
     private static final String K_BACKGROUND = "background";
     private static final String K_BLUR_ALL = "blur_all";
     private static final String K_CLOCK_ZONE = "clock_zone";
@@ -396,5 +397,14 @@ public final class Prefs {
 
     static void setLiquidGlass(Context c, boolean value) {
         put(c, K_LIQUID_GLASS, value);
+    }
+
+    /** Deckkraft aller Glasflächen, 0..100; der Standard entspricht dem bisherigen Aussehen. */
+    static int glassOpacity(Context c) {
+        return Math.max(0, Math.min(100, getInt(c, K_GLASS_OPACITY, LiquidGlass.OPACITY_DEFAULT)));
+    }
+
+    static void setGlassOpacity(Context c, int value) {
+        put(c, K_GLASS_OPACITY, Math.max(0, Math.min(100, value)));
     }
 }

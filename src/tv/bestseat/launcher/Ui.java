@@ -117,6 +117,7 @@ final class Ui {
     static boolean apply(android.content.Context context) {
         setLight(Prefs.isLight(context));
         LiquidGlass.on = Prefs.liquidGlass(context);
+        LiquidGlass.opacity = Prefs.glassOpacity(context);
         return light;
     }
     static final int ACCENT = Color.rgb(74, 144, 255);

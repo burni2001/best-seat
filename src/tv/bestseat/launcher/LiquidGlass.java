@@ -163,6 +163,27 @@ final class LiquidGlass {
     }
 
     /** Abgerundete Fläche (wie Ui.rounded), bei Liquid Glass mit Glanz und Lichtrand. */
+    /** Regler „Glass opacity“ (0..100). Standard 40 = bisheriges Aussehen. */
+    static final int OPACITY_DEFAULT = 40;
+    static int opacity = OPACITY_DEFAULT;
+
+    /**
+     * Deckkraft einer Glasfläche nach dem Regler. 0 ist nicht ganz durchsichtig (30 % der bisherigen
+     * Deckkraft, Wunsch des Nutzers), 100 fast deckend. Deckende Farben (Fokus weiß) bleiben unverändert.
+     */
+    static int alpha(int a) {
+        if (!on || a >= 255) return a;
+        int v = Math.max(0, Math.min(100, opacity));
+        float f = v <= OPACITY_DEFAULT ? 0.3f + 0.7f * v / OPACITY_DEFAULT
+                : 1f + 1.5f * (v - OPACITY_DEFAULT) / (100f - OPACITY_DEFAULT);
+        return Math.max(1, Math.min(245, Math.round(a * f)));
+    }
+
+    /** Wie alpha(int), auf eine Farbe angewandt. */
+    static int color(int c) {
+        return Color.argb(alpha(Color.alpha(c)), Color.red(c), Color.green(c), Color.blue(c));
+    }
+
     static final class Rounded extends GradientDrawable {
         private final float density;
         private final float strength;
@@ -180,6 +201,12 @@ final class LiquidGlass {
          * Milchglas: das weichgezeichnete Abbild des Bildschirms (bildschirmgroß gedacht, klein gerechnet),
          * genau der Ausschnitt hinter host, unter die Tönung gelegt.
          */
+        /** Jede Tönung einer Glasfläche folgt dem Regler „Glass opacity“. */
+        @Override
+        public void setColor(int argb) {
+            super.setColor(LiquidGlass.color(argb));
+        }
+
         Rounded backdrop(android.graphics.Bitmap shot, android.view.View host) {
             this.backdrop = shot;
             this.host = host;

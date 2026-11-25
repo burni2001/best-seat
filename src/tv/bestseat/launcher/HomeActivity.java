@@ -88,6 +88,7 @@ public final class HomeActivity extends Activity
     private boolean builtLight;
     private int builtFont;
     private boolean builtGlass;
+    private int builtOpacity;
     private boolean resumed;
     /** Sichtbar seit (uptime), 0 = gestoppt. Für „Home auf der Startseite“: Android pausiert vor onNewIntent. */
     long visibleSince;
@@ -113,6 +114,7 @@ public final class HomeActivity extends Activity
         builtLight = Ui.apply(this);
         builtFont = Prefs.font(this);
         builtGlass = LiquidGlass.on;
+        builtOpacity = LiquidGlass.opacity;
         pendingHidden = ACTION_HIDDEN.equals(getIntent().getAction());
         pendingSetup = ACTION_SETUP.equals(getIntent().getAction());
         store = LayoutStore.get(this);
@@ -185,7 +187,7 @@ public final class HomeActivity extends Activity
         }
         // Erscheinungsbild geändert (Einstellung oder Automatik zur vollen Stunde): Seite neu aufbauen.
         if (Prefs.isLight(this) != builtLight || Prefs.font(this) != builtFont
-                || Prefs.liquidGlass(this) != builtGlass) {
+                || Prefs.liquidGlass(this) != builtGlass || Prefs.glassOpacity(this) != builtOpacity) {
             recreate();
             return;
         }

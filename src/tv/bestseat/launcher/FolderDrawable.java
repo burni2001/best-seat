@@ -50,7 +50,7 @@ final class FolderDrawable extends Drawable {
         }
         bg.setColor(Ui.FOLDER_TILE);
         // Glass: Tönung schwächer, damit der Hintergrund durch die Lupe zu sehen ist.
-        if (LiquidGlass.on) bg.setAlpha(Math.round(Color.alpha(Ui.FOLDER_TILE) * 0.6f));
+        if (LiquidGlass.on) bg.setAlpha(LiquidGlass.alpha(Math.round(Color.alpha(Ui.FOLDER_TILE) * 0.6f)));
     }
 
     @Override

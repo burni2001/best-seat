@@ -265,6 +265,20 @@ public final class SettingsActivity extends Activity {
             focusAfterRecreate = "liquid_glass";
             recreate();
         });
+        if (LiquidGlass.on) {
+            // Regler: Links/Rechts in Fünferschritten (dispatchKeyEvent), wirkt auf alle Glasflächen.
+            opacitySlider = new Slider(this, Prefs.glassOpacity(this));
+            LinearLayout opacityRow = row("Glass opacity", opacitySlider,
+                    "Press left or right to make glass clearer or more solid.");
+            opacityRow.setTag("glass_opacity");
+            android.view.View.OnFocusChangeListener f = opacityRow.getOnFocusChangeListener();
+            opacityRow.setOnFocusChangeListener((v, has) -> {
+                f.onFocusChange(v, has);
+                opacitySlider.setFocusedLook(has);
+            });
+        } else {
+            opacitySlider = null;
+        }
         externalSettings();
         section("General");
         group(PAGE_BACKUP, "Backup", "Save or restore tiles, folders and settings.");
@@ -572,9 +586,23 @@ public final class SettingsActivity extends Activity {
         return true;
     }
 
+    /** Regler „Glass opacity“ auf der Hauptseite (nur mit Glass), sonst null. */
+    private Slider opacitySlider;
+
     @Override
     public boolean dispatchKeyEvent(android.view.KeyEvent event) {
         int code = event.getKeyCode();
+        android.view.View focusedRow = getCurrentFocus();
+        if (opacitySlider != null && focusedRow != null && "glass_opacity".equals(focusedRow.getTag())
+                && (code == android.view.KeyEvent.KEYCODE_DPAD_LEFT || code == android.view.KeyEvent.KEYCODE_DPAD_RIGHT)) {
+            if (event.getAction() == android.view.KeyEvent.ACTION_DOWN) {
+                int step = code == android.view.KeyEvent.KEYCODE_DPAD_RIGHT ? 5 : -5;
+                opacitySlider.setValue(opacitySlider.value() + step);
+                Prefs.setGlassOpacity(this, opacitySlider.value());
+                LiquidGlass.opacity = opacitySlider.value();
+            }
+            return true;
+        }
         if (movingId != null && event.getAction() == android.view.KeyEvent.ACTION_DOWN) {
             if (code == android.view.KeyEvent.KEYCODE_DPAD_UP) return moveControl(-1);
             if (code == android.view.KeyEvent.KEYCODE_DPAD_DOWN) return moveControl(1);

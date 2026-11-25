@@ -37,7 +37,7 @@ final class DockDrawable extends Drawable {
     DockDrawable(int color, int strokeColor, float strokeWidth, float radius, float maxExtend, float focusRadius) {
         fill.setColor(color);
         // Glass: Leiste durchsichtiger.
-        if (LiquidGlass.on) fill.setAlpha(Math.round(fill.getAlpha() * 0.5f));
+        if (LiquidGlass.on) fill.setAlpha(LiquidGlass.alpha(Math.round(fill.getAlpha() * 0.5f)));
         stroke.setColor(strokeColor);
         stroke.setStyle(Paint.Style.STROKE);
         stroke.setStrokeWidth(strokeWidth);
