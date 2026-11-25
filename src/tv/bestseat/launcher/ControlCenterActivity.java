@@ -99,6 +99,9 @@ public final class ControlCenterActivity extends Activity {
         root.addView(dim, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
         root.setOnClickListener(v -> close());
+        // Glass: Kasten ohne Fläche; der Rahmen darf ihn nicht auf seine Grenzen beschneiden, sonst endet
+        // der Schatten der untersten Zeile in einer geraden Linie.
+        if (LiquidGlass.on) root.setClipChildren(false);
 
         panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
