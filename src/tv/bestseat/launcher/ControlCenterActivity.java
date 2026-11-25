@@ -764,8 +764,7 @@ public final class ControlCenterActivity extends Activity {
         q.setPadding(Ui.dp(this, 4), 0, 0, Ui.dp(this, 12));
         body.addView(q);
         View cancel = wideRow("Keep connected", this::showMain);
-        wideRow("Disconnect", () -> launch(new Intent(Companions.TVHELPER + ".VPN_DISCONNECT")
-                .setPackage(Companions.TVHELPER)));
+        wideRow("Disconnect", () -> launch(new Intent(this, VpnDisconnectActivity.class)));
         cancel.requestFocus();
     }
 

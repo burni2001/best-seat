@@ -6,7 +6,7 @@ import android.widget.LinearLayout;
 import android.widget.Toast;
 
 /**
- * Einrichtungsassistent beim ersten Start (W124): Willkommen, adb-Freigabe, Sicherung einspielen,
+ * Einrichtungsassistent beim ersten Start (W124): Willkommen, adb-Freigabe, Berechtigungen, Sicherung einspielen,
  * Erscheinungsbild, Bildschirmschoner, Fertig. Jeder Schritt ist ein Fenster im Stil der übrigen
  * Best-Seat-Abfragen. Zurück oder Home bricht ab; in den Einstellungen lässt er sich neu starten.
  * Bei einem Update (nicht frisch installiert) erscheint er nicht von selbst.
@@ -62,7 +62,7 @@ final class SetupWizard {
     private void adb() {
         try {
             tv.bestseat.launcher.switcher.AdbAccess.requireGranted(home);
-            backup();
+            permissions(this::backup);
             return;
         } catch (Exception notYet) {
             // Freigabe fehlt noch: fragen.
@@ -72,7 +72,7 @@ final class SetupWizard {
                         + "backups and the screensaver in idle apps. Confirm “Allow USB debugging” "
                         + "on the TV and tick Always allow.");
         LinearLayout allow = Dialogs.alertButton(home, p, "Allow", this::waitForAdb);
-        Dialogs.alertButton(home, p, "Not Now", this::appearance);
+        Dialogs.alertButton(home, p, "Not Now", () -> permissions(this::appearance));
         show(p, allow);
     }
 
@@ -90,14 +90,48 @@ final class SetupWizard {
             home.runOnUiThread(() -> {
                 if (home.isDestroyed()) return;
                 if (granted) {
-                    backup();
+                    permissions(this::backup);
                 } else {
-                    Toast.makeText(home, "No adb access. You can allow it later in the App Switcher settings.",
+                    Toast.makeText(home, "No adb access. You can allow it later in Settings > Permissions.",
                             Toast.LENGTH_LONG).show();
-                    appearance();
+                    permissions(this::appearance);
                 }
             });
         }, "setup-adb").start();
+    }
+
+    /** Remaining permissions (adb has its own step). With adb access they are granted without dialogs. */
+    private void permissions(Runnable next) {
+        java.util.List<Integer> missing = Permissions.missing(home);
+        missing.remove(Integer.valueOf(Permissions.ADB));
+        if (missing.isEmpty()) {
+            next.run();
+            return;
+        }
+        StringBuilder names = new StringBuilder();
+        for (int p : missing) names.append(names.length() > 0 ? ", " : "").append(Permissions.name(p));
+        Dialogs.Panel p = step("Allow Permissions", "Best Seat still needs " + names
+                + ". You can also allow them later in Settings > Permissions.");
+        LinearLayout allow = Dialogs.alertButton(home, p, "Allow", () -> allowEach(missing, 0, next));
+        Dialogs.alertButton(home, p, "Not Now", next);
+        show(p, allow);
+    }
+
+    private void allowEach(java.util.List<Integer> missing, int i, Runnable next) {
+        if (i >= missing.size()) {
+            next.run();
+            return;
+        }
+        int perm = missing.get(i);
+        Runnable after = () -> allowEach(missing, i + 1, next);
+        if (Permissions.granted(home, Permissions.ADB)) {
+            Permissions.fix(home, perm, after);
+            return;
+        }
+        Dialogs.Panel p = step(Permissions.name(perm), Permissions.hint(perm));
+        LinearLayout open = Dialogs.alertButton(home, p, "Open", () -> Permissions.fix(home, perm, after));
+        Dialogs.alertButton(home, p, "Skip", after);
+        show(p, open);
     }
 
     private void backup() {

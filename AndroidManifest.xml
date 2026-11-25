@@ -169,5 +169,28 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+        <!-- "Disconnect VPN" (Control Center, tvQuickActions), taken over from the former Google TV Helper. -->
+        <activity
+            android:name=".VpnDisconnectActivity"
+            android:label="Disconnect VPN"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.NoDisplay">
+            <intent-filter>
+                <action android:name="tv.bestseat.launcher.VPN_DISCONNECT" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+        <!-- Empty VPN that briefly takes the VPN slot and so disconnects Surfshark. -->
+        <service
+            android:name=".VpnTakeoverService"
+            android:exported="false"
+            android:permission="android.permission.BIND_VPN_SERVICE">
+            <intent-filter>
+                <action android:name="android.net.VpnService" />
+            </intent-filter>
+        </service>
     </application>
 </manifest>

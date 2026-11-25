@@ -95,6 +95,7 @@ public final class SettingsActivity extends Activity {
     private static final String PAGE_SWITCHER_HIDDEN = "switcher_hidden";
     private static final String PAGE_BACKUP = "backup";
     private static final String PAGE_VPN_APPS = "vpn_apps";
+    private static final String PAGE_PERMISSIONS = "permissions";
     /** Auswahl einer Option als eigene Unterseite mit Haken (wie tvOS „Erscheinungsbild“). */
     private static final String PAGE_CHOICE = "choice";
     private String choiceTitle;
@@ -133,6 +134,9 @@ public final class SettingsActivity extends Activity {
         } else if (PAGE_VPN_APPS.equals(page)) {
             title.setText("Ask for VPN");
             vpnAppsRows();
+        } else if (PAGE_PERMISSIONS.equals(page)) {
+            title.setText("Permissions");
+            permissionRows();
         } else if (PAGE_BACKUP.equals(page)) {
             title.setText("Backup");
             backupRows();
@@ -150,6 +154,7 @@ public final class SettingsActivity extends Activity {
         else if (PAGE_CONTROL.equals(page)) icon = ControlItems.SETTINGS;
         else if (PAGE_SWITCHER.equals(page) || PAGE_SWITCHER_HIDDEN.equals(page)) icon = ControlItems.APP_SWITCHER;
         else if (PAGE_BACKUP.equals(page)) icon = ControlItems.RESTART;
+        else if (PAGE_PERMISSIONS.equals(page)) icon = ControlItems.VPN;
         else if (PAGE_VPN_APPS.equals(page)) icon = ControlItems.VPN;
         else if (PAGE_CHOICE.equals(page)) icon = choiceIcon;
         else icon = ControlItems.HOME;
@@ -282,10 +287,44 @@ public final class SettingsActivity extends Activity {
         externalSettings();
         section("General");
         group(PAGE_BACKUP, "Backup", "Save or restore tiles, folders and settings.");
+        group(PAGE_PERMISSIONS, "Permissions", "Check and allow what Best Seat needs.");
         row("Setup Assistant", null, "Run the first-start setup again.")
                 .setOnClickListener(v -> startActivity(new Intent(HomeActivity.ACTION_SETUP)
                         .setClass(this, HomeActivity.class)));
         row("About", null, "See the version and credits.").setOnClickListener(v -> Dialogs.about(this));
+    }
+
+    /** All permissions with their state; a missing one opens its system page or is granted via adb. */
+    private void permissionRows() {
+        section("Needed by Best Seat");
+        for (int i = 0; i < Permissions.COUNT; i++) {
+            final int p = i;
+            boolean ok = Permissions.granted(this, p);
+            LinearLayout r = row(Permissions.name(p), Ui.dimText(this, ok ? "Granted" : "Missing \u203A"),
+                    Permissions.hint(p));
+            r.setTag("perm:" + p);
+            r.setOnClickListener(v -> {
+                if (Permissions.granted(this, p)) return;
+                Permissions.fix(this, p, () -> {
+                    if (PAGE_PERMISSIONS.equals(page)) {
+                        build();
+                        focusTag("perm:" + p);
+                    }
+                });
+            });
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Back from a system page or dialog: show the new state.
+        if (PAGE_PERMISSIONS.equals(page) && list != null) {
+            android.view.View f = getCurrentFocus();
+            Object tag = f != null ? f.getTag() : null;
+            build();
+            if (tag instanceof String) focusTag((String) tag);
+        }
     }
 
     /** Einstellungen der Helfer-Apps verlinken; Apps, die auf dem TV fehlen, erscheinen nicht (W98). */
@@ -293,7 +332,7 @@ public final class SettingsActivity extends Activity {
         String[][] apps = {
                 {Companions.AIRPLAY, "AirPlay", "Open the AirPlay settings."},
                 {Companions.HUESYNC, "Ambience", "Open the Ambience settings."},
-                {Companions.TVHELPER, "Google TV Helper", "Open the Google TV Helper settings."}};
+                {Companions.TVHELPER, "Best Seat Helper", "Open the Best Seat Helper settings."}};
         boolean any = false;
         for (String[] app : apps) {
             Intent launch = getPackageManager().getLeanbackLaunchIntentForPackage(app[0]);
