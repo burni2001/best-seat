@@ -105,6 +105,8 @@
             android:theme="@style/OverlayTheme">
             <intent-filter>
                 <action android:name="tv.bestseat.launcher.CONTROL_CENTER" />
+                <!-- Direkt die Liste der Eingänge (für die Sources-Taste der Fernbedienung). -->
+                <action android:name="tv.bestseat.launcher.SOURCES" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>

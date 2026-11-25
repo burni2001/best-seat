@@ -319,9 +319,10 @@ public final class HomeActivity extends Activity
      * selbst, damit es wie über die Menü-Taste den weichgezeichneten Hintergrund bekommt. false: keine
      * Startseite sichtbar (eine App ist vorne).
      */
-    static boolean openControlCenterFromIntent() {
+    static boolean openControlCenterFromIntent(boolean sources) {
         HomeActivity h = visibleHome != null ? visibleHome.get() : null;
         if (h == null || h.visibleSince == 0 || h.isFinishing()) return false;
+        h.ccSources = sources;
         h.handler.post(() -> h.openControlCenter(null));
         return true;
     }
@@ -348,9 +349,14 @@ public final class HomeActivity extends Activity
         startControlCenter(overPkg);
     }
 
+    /** Nächstes Öffnen des Kontrollzentrums direkt mit den Eingängen (Sources-Taste). */
+    private boolean ccSources;
+
     private void startControlCenter(String overPkg) {
         if (isDestroyed()) return;
         Intent cc = new Intent(this, ControlCenterActivity.class);
+        if (ccSources) cc.putExtra(ControlCenterActivity.EXTRA_SOURCES, true);
+        ccSources = false;
         if (overPkg != null) {
             cc.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).putExtra(ControlCenterActivity.EXTRA_OVER_APP, overPkg);
         }

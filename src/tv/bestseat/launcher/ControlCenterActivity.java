@@ -33,6 +33,11 @@ import java.util.List;
 public final class ControlCenterActivity extends Activity {
 
     static final String ACTION = "tv.bestseat.launcher.CONTROL_CENTER";
+    /** Sources-Taste: Kontrollzentrum direkt mit der Liste der Eingänge, Zurück schließt alles. */
+    static final String ACTION_SOURCES = "tv.bestseat.launcher.SOURCES";
+    static final String EXTRA_SOURCES = "sources";
+    /** Nur die Eingänge zeigen (über ACTION_SOURCES geöffnet). */
+    private boolean sourcesOnly;
     private static final String TAG = "Launcher.Control";
     private static final long IDLE_CLOSE_MS = 30_000;
     // Maße exakt nach dem tvOS-Kontrollzentrum (Design/control center.png, 3024 px Bildbreite = 960 dp):
@@ -72,7 +77,10 @@ public final class ControlCenterActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         // Per Intent auf der Startseite: die Startseite öffnet das CC neu, mit Milchglas-Hintergrund.
-        if (homeBlur == null && ACTION.equals(getIntent().getAction()) && HomeActivity.openControlCenterFromIntent()) {
+        String action = getIntent().getAction();
+        sourcesOnly = ACTION_SOURCES.equals(action) || getIntent().getBooleanExtra(EXTRA_SOURCES, false);
+        if (homeBlur == null && (ACTION.equals(action) || ACTION_SOURCES.equals(action))
+                && HomeActivity.openControlCenterFromIntent(sourcesOnly)) {
             finish();
             Ui.transition(this, 0, 0);
             return;
@@ -169,10 +177,15 @@ public final class ControlCenterActivity extends Activity {
         root.addView(pill, pill.frameParams());
         setContentView(root);
 
-        showMain();
-        // Fokus beim Öffnen auf dem Schalter-Symbol in der Pille (zwischen Uhr und Profilbild).
-        pill.controls.requestFocus();
-        pill.post(() -> pill.controls.requestFocus());
+        if (sourcesOnly) {
+            // Sources-Taste: gleich die Eingänge, Fokus auf dem ersten.
+            showInputs();
+        } else {
+            showMain();
+            // Fokus beim Öffnen auf dem Schalter-Symbol in der Pille (zwischen Uhr und Profilbild).
+            pill.controls.requestFocus();
+            pill.post(() -> pill.controls.requestFocus());
+        }
         // Pille wächst nach links um das Schalter-Symbol, der Kasten klappt darunter auf.
         // Erst wachsen, wenn die Pille der Startseite übergeben ist (handoff), sonst stehen zwei Uhren da.
         pill.collapseControls();
@@ -263,7 +276,8 @@ public final class ControlCenterActivity extends Activity {
         super.onNewIntent(intent);
         // Wechsel: Kommt der Intent erneut, während das CC offen ist (z. B. Doppel-HOME in tvQuickActions,
         // das HOME selbst abfängt), schließt er es wie der zweite Doppelklick (W103).
-        if (intent.getBooleanExtra(EXTRA_CLOSE, false) || (ACTION.equals(intent.getAction()) && wasJustOpen())) {
+        if (intent.getBooleanExtra(EXTRA_CLOSE, false)
+                || ((ACTION.equals(intent.getAction()) || ACTION_SOURCES.equals(intent.getAction())) && wasJustOpen())) {
             // wasJustOpen statt resumedNow: Android pausiert die Aktivität vor onNewIntent.
             Ui.transition(this, 0, 0);
             close();
@@ -353,7 +367,7 @@ public final class ControlCenterActivity extends Activity {
         if (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_MENU) {
             if (event.getAction() == KeyEvent.ACTION_UP) {
                 if (code == KeyEvent.KEYCODE_BACK && profile.isProfileSub()) profile.showProfile();
-                else if (code == KeyEvent.KEYCODE_BACK && body.getTag() != null) showMain();
+                else if (code == KeyEvent.KEYCODE_BACK && body.getTag() != null && !sourcesOnly) showMain();
                 else close();
             }
             return true;
@@ -371,7 +385,7 @@ public final class ControlCenterActivity extends Activity {
         if (code == KeyEvent.KEYCODE_DPAD_LEFT && atLeftEdge()) {
             if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
                 if (profile.isProfileSub()) profile.showProfile();
-                else if (body.getTag() != null) showMain();
+                else if (body.getTag() != null && !sourcesOnly) showMain();
                 else close();
             }
             return true;
