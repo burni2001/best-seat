@@ -36,6 +36,8 @@ public final class ControlCenterActivity extends Activity {
     /** Sources-Taste: Kontrollzentrum direkt mit der Liste der Eingänge, Zurück schließt alles. */
     static final String ACTION_SOURCES = "tv.bestseat.launcher.SOURCES";
     static final String EXTRA_SOURCES = "sources";
+    /** Gestartet von der Startseite selbst (mit Abbild fürs Glas), nicht über sie umleiten. */
+    static final String EXTRA_FROM_HOME = "from_home";
     /** Nur die Eingänge zeigen (über ACTION_SOURCES geöffnet). */
     private boolean sourcesOnly;
     private static final String TAG = "Launcher.Control";
@@ -79,7 +81,9 @@ public final class ControlCenterActivity extends Activity {
         // Per Intent auf der Startseite: die Startseite öffnet das CC neu, mit Milchglas-Hintergrund.
         String action = getIntent().getAction();
         sourcesOnly = ACTION_SOURCES.equals(action) || getIntent().getBooleanExtra(EXTRA_SOURCES, false);
-        if (homeBlur == null && (ACTION.equals(action) || ACTION_SOURCES.equals(action))
+        // Jeder Start, der nicht von der Startseite selbst kommt (auch tvQuickActions über die Home-Taste,
+        // das die Klasse ohne Action startet), geht über die Startseite; sonst fehlt das Abbild fürs Glas.
+        if (homeBlur == null && !getIntent().getBooleanExtra(EXTRA_FROM_HOME, false)
                 && HomeActivity.openControlCenterFromIntent(sourcesOnly)) {
             finish();
             Ui.transition(this, 0, 0);

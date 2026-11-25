@@ -381,7 +381,7 @@ public final class HomeActivity extends Activity
 
     private void startControlCenter(String overPkg) {
         if (isDestroyed()) return;
-        Intent cc = new Intent(this, ControlCenterActivity.class);
+        Intent cc = new Intent(this, ControlCenterActivity.class).putExtra(ControlCenterActivity.EXTRA_FROM_HOME, true);
         if (ccSources) cc.putExtra(ControlCenterActivity.EXTRA_SOURCES, true);
         ccSources = false;
         if (overPkg != null) {
