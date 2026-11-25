@@ -694,6 +694,17 @@ public final class ControlCenterActivity extends Activity {
         }
     }
 
+    /** Glas-Fläche einer Zeile: Milchglas mit Lupe über dem Abbild der Startseite, fokussiert weiß. */
+    android.graphics.drawable.Drawable glassBg(boolean focused, float r, View host) {
+        if (!focused && glassBackdrop != null) {
+            LiquidGlass.Rounded d = new LiquidGlass.Rounded(LiquidGlass.density(), 1f).backdrop(glassBackdrop, host);
+            d.setColor(Ui.glassTint());
+            d.setCornerRadius(r);
+            return d;
+        }
+        return Ui.tileBg(focused ? Ui.ROW_FOCUSED : Ui.ROW, r);
+    }
+
     /**
      * Überschrift einer Unterseite. Bei Glass ohne Kasten dahinter: in voller Schriftfarbe mit weichem
      * Schatten, sonst ist sie auf hellen Hintergründen kaum zu lesen.
@@ -701,9 +712,9 @@ public final class ControlCenterActivity extends Activity {
     private TextView caption(String text) {
         TextView t = Ui.caption(this, text);
         if (LiquidGlass.on) {
-            t.setTextColor(Ui.TEXT);
-            t.setShadowLayer(Ui.dp(this, 4), 0, Ui.dp(this, 1),
-                    Ui.light ? Color.argb(150, 255, 255, 255) : Color.argb(170, 0, 0, 0));
+            // Weiß mit dunklem Schatten, in hellem wie dunklem Design (Wunsch des Nutzers).
+            t.setTextColor(Color.WHITE);
+            t.setShadowLayer(Ui.dp(this, 4), 0, Ui.dp(this, 1), Color.argb(150, 0, 0, 0));
         }
         return t;
     }
@@ -719,7 +730,10 @@ public final class ControlCenterActivity extends Activity {
         List<Tile> inputs = AppRepository.inputs(this);
         View first = null;
         for (Tile t : inputs) {
-            View v = wideRow(t.label, () -> launch(t.intent));
+            View v = wideRow(t.label, ControlIcons.sourceIcon(t.label), () -> {
+                AppRepository.noteInputUsed(this, t);
+                launch(t.intent);
+            });
             if (first == null) first = v;
         }
         if (first == null) {
@@ -776,10 +790,44 @@ public final class ControlCenterActivity extends Activity {
     }
 
     View wideRow(String label, Runnable action) {
+        return wideRow(label, null, action);
+    }
+
+    /** Breite Zeile, optional mit Symbol (ControlIcons-id) vor dem Text; bei Glass als Glas-Pille. */
+    View wideRow(String label, String iconId, Runnable action) {
         LinearLayout row = Ui.row(this);
         row.setMinimumHeight(Ui.dp(this, 42));
-        row.setPadding(Ui.dp(this, 14), 0, Ui.dp(this, 14), 0);
+        row.setPadding(Ui.dp(this, LiquidGlass.on ? 16 : 14), 0, Ui.dp(this, 14), 0);
+        ControlIcons.Icon icon = null;
+        if (iconId != null) {
+            icon = new ControlIcons.Icon(iconId, Ui.TEXT).strokeWidth(1.9f);
+            android.widget.ImageView iv = new android.widget.ImageView(this);
+            iv.setImageDrawable(icon);
+            int is = Ui.dp(this, 22);
+            LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(is, is);
+            ilp.rightMargin = Ui.dp(this, 10);
+            row.addView(iv, ilp);
+        }
         row.addView(Ui.text(this, label, 14, Ui.TEXT, true), Ui.fill());
+        final ControlIcons.Icon rowIcon = icon;
+        if (LiquidGlass.on) {
+            // Glass: Zeile als Glas-Pille wie die Kacheln (Milchglas mit Lupe), Fokus weiß.
+            float r = Ui.dp(this, 999);
+            row.setBackground(glassBg(false, r, row));
+            row.setOnFocusChangeListener((v, has) -> {
+                v.setBackground(glassBg(has, r, v));
+                Ui.tint((LinearLayout) v, has);
+                if (rowIcon != null) rowIcon.setColor(has ? Ui.TEXT_ON_FOCUS : Ui.TEXT);
+                v.animate().scaleX(has ? 1.03f : 1f).scaleY(has ? 1.03f : 1f)
+                        .translationZ(has ? Ui.dp(this, 8) : 0).setDuration(140).start();
+            });
+        } else if (rowIcon != null) {
+            View.OnFocusChangeListener base = row.getOnFocusChangeListener();
+            row.setOnFocusChangeListener((v, has) -> {
+                if (base != null) base.onFocusChange(v, has);
+                rowIcon.setColor(has ? Ui.TEXT_ON_FOCUS : Ui.TEXT);
+            });
+        }
         row.setOnClickListener(v -> action.run());
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);

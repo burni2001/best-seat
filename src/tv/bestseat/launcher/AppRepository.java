@@ -128,7 +128,20 @@ public final class AppRepository {
     static List<Tile> inputs(Context context) {
         Map<String, Tile> out = new LinkedHashMap<>();
         loadInputs(context, out);
-        return new ArrayList<>(out.values());
+        List<Tile> list = new ArrayList<>(out.values());
+        // Zuletzt genutzte zuerst (Wunsch des Nutzers); nie genutzte in der Reihenfolge des TVs dahinter.
+        android.content.SharedPreferences used = context.getSharedPreferences(INPUTS_USED, Context.MODE_PRIVATE);
+        java.util.Collections.sort(list, (a, b) -> Long.compare(used.getLong(b.key, 0), used.getLong(a.key, 0)));
+        return list;
+    }
+
+    private static final String INPUTS_USED = "inputs_used";
+
+    /** Eingang wurde über Best Seat gestartet: für die Sortierung merken. */
+    static void noteInputUsed(Context context, Tile tile) {
+        if (tile == null || tile.kind != Tile.INPUT) return;
+        context.getSharedPreferences(INPUTS_USED, Context.MODE_PRIVATE).edit()
+                .putLong(tile.key, System.currentTimeMillis()).apply();
     }
 
     /** HDMI-Anschlüsse und CEC-Geräte. Start per VIEW auf den Durchleitungs-Kanal (wie die Quellenwahl). */

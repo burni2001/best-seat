@@ -943,6 +943,7 @@ public final class HomeActivity extends Activity
     }
 
     void launch(Tile tile) {
+        AppRepository.noteInputUsed(this, tile);
         boolean reduce = Prefs.reduceMotion(this);
         if (reduce) zoom.clear();
         boolean zoomed = zoom.hasCapture();

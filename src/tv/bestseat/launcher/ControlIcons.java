@@ -18,6 +18,25 @@ final class ControlIcons {
     private ControlIcons() {
     }
 
+    /** Symbol für einen Eingang nach seinem Namen (vom Nutzer im TV vergeben, z. B. „PlayStation 5 Pro“). */
+    static String sourceIcon(String label) {
+        String l = label == null ? "" : label.toLowerCase(java.util.Locale.ROOT);
+        if (has(l, "switch", "nintendo", "steam deck")) return "src_switch";
+        if (has(l, "playstation", "ps5", "ps4", "ps3", "xbox")) return "src_tower";
+        if (has(l, "console", "konsole", "game", "gaming", "spiel")) return "src_gamepad";
+        if (has(l, "pc", "computer", "mac", "laptop", "notebook", "monitor")) return "src_monitor";
+        if (has(l, "blu", "dvd", "disc", "player", "uhd")) return "src_disc";
+        if (has(l, "soundbar", "receiver", "avr", "audio", "sonos", "amp", "speaker")) return "src_speaker";
+        if (has(l, "antenna", "antenne", "tuner", "sat", "cable", "kabel", "dvb")) return "src_antenna";
+        if (has(l, "apple tv", "fire", "chromecast", "shield", "roku", "stream", "box", "media")) return "src_box";
+        return "src_hdmi";
+    }
+
+    private static boolean has(String label, String... words) {
+        for (String w : words) if (label.contains(w)) return true;
+        return false;
+    }
+
     static final class Icon extends Drawable {
         private final String id;
         private final Paint stroke = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -129,6 +148,61 @@ final class ControlIcons {
                     p.lineTo(5, 6);
                     p.close();
                     c.drawPath(p, stroke);
+                    break;
+                // ---- Eingänge (Sources): Symbol nach dem Namen des Eingangs, siehe sourceIcon()
+                case "src_switch": // Handkonsole mit zwei Controllern an den Seiten
+                    c.drawRoundRect(new RectF(7.5f, 6, 16.5f, 18), 1, 1, stroke);
+                    c.drawRoundRect(new RectF(3, 6, 7.5f, 18), 2.5f, 2.5f, stroke);
+                    c.drawRoundRect(new RectF(16.5f, 6, 21, 18), 2.5f, 2.5f, stroke);
+                    c.drawCircle(5.25f, 10, 0.9f, fill);
+                    c.drawCircle(18.75f, 14, 0.9f, fill);
+                    break;
+                case "src_tower": // stehende Konsole mit Sockel
+                    c.drawRoundRect(new RectF(8.5f, 3, 15.5f, 19), 2.5f, 2.5f, stroke);
+                    c.drawLine(12, 4.5f, 12, 17.5f, stroke);
+                    c.drawLine(6.5f, 21, 17.5f, 21, stroke);
+                    break;
+                case "src_gamepad": // Controller
+                    c.drawRoundRect(new RectF(2.5f, 7.5f, 21.5f, 17.5f), 5, 5, stroke);
+                    c.drawLine(6.5f, 12.5f, 10.5f, 12.5f, stroke);
+                    c.drawLine(8.5f, 10.5f, 8.5f, 14.5f, stroke);
+                    c.drawCircle(15.5f, 11.3f, 1.1f, fill);
+                    c.drawCircle(17.7f, 13.6f, 1.1f, fill);
+                    break;
+                case "src_box": // Zuspieler (Streaming-Box)
+                    c.drawRoundRect(new RectF(3.5f, 8.5f, 20.5f, 16), 2.5f, 2.5f, stroke);
+                    c.drawCircle(16.5f, 12.25f, 0.9f, fill);
+                    break;
+                case "src_monitor": // Computer
+                    c.drawRoundRect(new RectF(3, 4, 21, 15.5f), 1.5f, 1.5f, stroke);
+                    c.drawLine(12, 15.5f, 12, 19, stroke);
+                    c.drawLine(8, 19.5f, 16, 19.5f, stroke);
+                    break;
+                case "src_disc": // Disc-Player
+                    c.drawCircle(12, 12, 8.5f, stroke);
+                    c.drawCircle(12, 12, 2.3f, stroke);
+                    break;
+                case "src_speaker": // Receiver, Soundbar
+                    c.drawRoundRect(new RectF(2.5f, 8, 21.5f, 16), 1.5f, 1.5f, stroke);
+                    c.drawCircle(16.5f, 12, 2, stroke);
+                    c.drawLine(6, 11, 10.5f, 11, stroke);
+                    c.drawLine(6, 13, 10.5f, 13, stroke);
+                    break;
+                case "src_antenna": // Antenne, Kabel, Satellit
+                    c.drawRoundRect(new RectF(4, 9, 20, 19.5f), 1.5f, 1.5f, stroke);
+                    c.drawLine(8, 4, 12, 9, stroke);
+                    c.drawLine(16, 4, 12, 9, stroke);
+                    break;
+                case "src_hdmi": // HDMI-Stecker (alles andere)
+                    p.moveTo(3.5f, 8);
+                    p.lineTo(20.5f, 8);
+                    p.lineTo(20.5f, 13);
+                    p.lineTo(17.5f, 16.5f);
+                    p.lineTo(6.5f, 16.5f);
+                    p.lineTo(3.5f, 13);
+                    p.close();
+                    c.drawPath(p, stroke);
+                    c.drawLine(8, 11.5f, 16, 11.5f, stroke);
                     break;
                 case "controlcenter": // zwei Schalter übereinander (Kontrollzentrum in der Statuspille)
                     c.drawRoundRect(new RectF(4, 4.5f, 20, 11), 3.25f, 3.25f, stroke);
