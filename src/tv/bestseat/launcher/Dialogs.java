@@ -145,7 +145,12 @@ final class Dialogs {
         panel.setOutlineProvider(new RoundedOutline(radius));
         panel.setClipToOutline(!narrow);
         panel.setClipChildren(!narrow);
-        if (narrow) {
+        if (narrow && LiquidGlass.on) {
+            // Glass: Die fokussierte Pille bleibt im Kasten, mit etwas Abstand zur runden Kante (Wunsch des Nutzers).
+            int in = Ui.dp(activity, 8);
+            content.setPadding(in, Ui.dp(activity, 3), in, Ui.dp(activity, 3));
+            panel.setClipToOutline(true);
+        } else if (narrow) {
             scroll.setClipChildren(false);
             scroll.setClipToPadding(false);
             scroll.setVerticalFadingEdgeEnabled(false);
@@ -481,8 +486,11 @@ final class Dialogs {
             text.setTextColor(has ? focused : normal);
             if (symView != null) symView.setTextColor(has ? focused : normal);
             // tvOS: Die fokussierte Zeile ist so breit wie das Menü plus ein Stück darüber hinaus.
-            v.animate().scaleX(has ? 1.08f : 1f).scaleY(has ? 1.1f : 1f)
-                    .translationZ(has ? Ui.dp(activity, 8) : 0).setDuration(Ui.ms(140)).start();
+            // Glass: ohne Zoom und Anheben, die Pille liegt im Kasten (Wunsch des Nutzers).
+            if (!LiquidGlass.on) {
+                v.animate().scaleX(has ? 1.08f : 1f).scaleY(has ? 1.1f : 1f)
+                        .translationZ(has ? Ui.dp(activity, 8) : 0).setDuration(Ui.ms(140)).start();
+            }
         });
         row.setOnClickListener(v -> {
             panel.dialog.dismiss();
