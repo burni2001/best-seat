@@ -82,8 +82,18 @@ final class LiquidGlass {
      * gleichzeitig einer oben von rechts nach links. phase 0..1, blendet am Anfang und Ende weich ein und aus.
      */
     static void sweep(Canvas c, RectF r, float radius, float density, float phase) {
+        sweep(c, r, radius, density, phase, false);
+    }
+
+    /**
+     * shade: Kachel ist an den Rändern hell (weißes Logo). Weißes Licht wäre darauf unsichtbar,
+     * deshalb läuft dort ein sanfter dunkler Schimmer mit gleicher Form (Wunsch des Nutzers).
+     */
+    static void sweep(Canvas c, RectF r, float radius, float density, float phase, boolean shade) {
         if (r.width() <= 0 || r.height() <= 0) return;
         int a = Math.round((Ui.light ? 80 : 74) * (float) Math.sin(Math.PI * Math.max(0f, Math.min(1f, phase))));
+        int rgb = shade ? 0 : 255;
+        if (shade) a = Math.round(a * 0.6f);
         if (a <= 0) return;
         Path shape = new Path();
         shape.addRoundRect(r, radius, radius, Path.Direction.CW);
@@ -94,11 +104,11 @@ final class LiquidGlass {
         for (float[] s : spots) {
             GLOW.setStrokeWidth(10f * density);
             GLOW.setShader(new android.graphics.RadialGradient(s[0], s[1], spot,
-                    Color.argb(Math.round(a * 0.2f), 255, 255, 255), Color.TRANSPARENT, Shader.TileMode.CLAMP));
+                    Color.argb(Math.round(a * 0.2f), rgb, rgb, rgb), Color.TRANSPARENT, Shader.TileMode.CLAMP));
             c.drawPath(shape, GLOW);
             RIM.setStrokeWidth(Math.max(1f, 1.6f * density) * 2f);
             RIM.setShader(new android.graphics.RadialGradient(s[0], s[1], spot,
-                    Color.argb(a, 255, 255, 255), Color.TRANSPARENT, Shader.TileMode.CLAMP));
+                    Color.argb(a, rgb, rgb, rgb), Color.TRANSPARENT, Shader.TileMode.CLAMP));
             c.drawPath(shape, RIM);
         }
         c.restore();

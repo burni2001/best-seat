@@ -34,6 +34,30 @@ final class TileView extends FrameLayout {
     private boolean edgeOn;
     private float sweep = -1f;
     private ValueAnimator sweepAnim;
+    /** Ränder der Kachel hell: Lichtlauf dunkel statt weiß, sonst unsichtbar. */
+    private boolean sweepShade;
+
+    /** Mittlere Helligkeit oben und unten am Rand (dort läuft das Licht), 0..1. */
+    private float edgeLuma() {
+        int w = 32, h = 18;
+        if (getWidth() <= 0 || getHeight() <= 0) return 0f;
+        android.graphics.Bitmap b = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888);
+        android.graphics.Canvas c = new android.graphics.Canvas(b);
+        c.drawColor(Color.BLACK);
+        c.scale(w / (float) getWidth(), h / (float) getHeight());
+        drawBare(c);
+        float sum = 0f;
+        int n = 0;
+        for (int y : new int[] {0, 1, 2, h - 3, h - 2, h - 1}) {
+            for (int x = 0; x < w; x++) {
+                int p = b.getPixel(x, y);
+                sum += (0.2126f * Color.red(p) + 0.7152f * Color.green(p) + 0.0722f * Color.blue(p)) / 255f;
+                n++;
+            }
+        }
+        b.recycle();
+        return sum / n;
+    }
 
     private void glassEdge(boolean focused) {
         if (!LiquidGlass.on || tile.kind == Tile.FOLDER) return;
@@ -42,6 +66,7 @@ final class TileView extends FrameLayout {
         edgeOn = focused;
         sweep = -1f;
         if (focused && !Prefs.reduceMotion(getContext())) {
+            sweepShade = edgeLuma() > 0.62f;
             // Licht läuft unten von links nach rechts und gleichzeitig oben von rechts nach links.
             ValueAnimator a = ValueAnimator.ofFloat(0f, 1f);
             a.setDuration(Ui.ms(320)); // so schnell wie der Fokus-Zoom: nur am Rand wahrnehmbar
@@ -152,7 +177,7 @@ final class TileView extends FrameLayout {
                 LiquidGlass.edge(canvas, edgeBox, radius, LiquidGlass.density(), 0.35f * rest);
                 LiquidGlass.glint(canvas, edgeBox, radius, rest);
             }
-            if (sweep >= 0f) LiquidGlass.sweep(canvas, edgeBox, radius, LiquidGlass.density(), sweep);
+            if (sweep >= 0f) LiquidGlass.sweep(canvas, edgeBox, radius, LiquidGlass.density(), sweep, sweepShade);
         }
     }
 
