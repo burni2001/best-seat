@@ -217,6 +217,16 @@ final class LiquidGlass {
             super.setColor(LiquidGlass.color(argb));
         }
 
+        /**
+         * Kräftige Tönung ohne Hintergrundbild (Kontrollzentrum über einer fremden App, deren Bild der
+         * Launcher nicht sieht): folgt dem Regler nur zwischen 150 und 230, damit die Fläche lesbar bleibt.
+         */
+        Rounded solid(int rgb) {
+            int v = Math.max(0, Math.min(100, opacity));
+            super.setColor((Math.round(150 + 80 * v / 100f) << 24) | (rgb & 0xFFFFFF));
+            return this;
+        }
+
         Rounded backdrop(android.graphics.Bitmap shot, android.view.View host) {
             this.backdrop = shot;
             this.host = host;

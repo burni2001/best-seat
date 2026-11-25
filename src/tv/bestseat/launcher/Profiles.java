@@ -69,7 +69,7 @@ final class Profiles {
             // Erstes Profil aus den bisherigen Einstellungen (Name und Bild aus W21).
             SharedPreferences p = sp(c);
             String name = p.getString("user_name", "").trim();
-            list.add(new Profile("p0", name.isEmpty() ? "Börni" : name, p.getInt("user_avatar", 0)));
+            list.add(new Profile("p0", name.isEmpty() ? "User" : name, p.getInt("user_avatar", 0)));
             save(c, list);
         }
         return list;

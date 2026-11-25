@@ -706,7 +706,16 @@ public final class ControlCenterActivity extends Activity {
             d.setCornerRadius(r);
             return d;
         }
+        if (!focused && LiquidGlass.on) return solidGlass(r);
         return Ui.tileBg(focused ? Ui.ROW_FOCUSED : Ui.ROW, r);
+    }
+
+    /** Glas ohne Hintergrundbild (über einer App): kräftig getönt statt fast durchsichtig. */
+    android.graphics.drawable.Drawable solidGlass(float r) {
+        LiquidGlass.Rounded d = new LiquidGlass.Rounded(LiquidGlass.density(), 1f)
+                .solid(Ui.light ? Color.rgb(238, 240, 244) : Color.rgb(28, 30, 36));
+        d.setCornerRadius(r);
+        return d;
     }
 
     /**

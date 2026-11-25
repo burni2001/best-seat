@@ -248,6 +248,7 @@ final class CcTiles {
             d.setCornerRadius(r);
             return d;
         }
+        if (!focused && LiquidGlass.on) return cc.solidGlass(r);
         return Ui.tileBg(focused ? Ui.ROW_FOCUSED : Ui.ROW, r);
     }
 }

@@ -204,7 +204,7 @@ public final class ScreensaverActivity extends Activity implements SurfaceHolder
                 if (code == KeyEvent.KEYCODE_DPAD_LEFT) skip(-1);
                 else if (code == KeyEvent.KEYCODE_DPAD_RIGHT) skip(1);
                 else if (code == KeyEvent.KEYCODE_DPAD_UP) toggleClock();
-                else showLocation();
+                else toggleLocation();
             }
             return true;
         }
@@ -229,8 +229,12 @@ public final class ScreensaverActivity extends Activity implements SurfaceHolder
         }
     }
 
-    /** Pfeil runter hat die Ortsangabe für diesen Schoner eingeschaltet (auch wenn sie in den Einstellungen aus ist). */
-    private boolean locationOn;
+    /** Pfeil runter hat die Ortsangabe für diesen Schoner ein- (true) oder ausgeschaltet (false); null folgt den Einstellungen. */
+    private Boolean locationOn;
+
+    private boolean locationEnabled() {
+        return locationOn != null ? locationOn : Prefs.saverLocation(this);
+    }
 
     /** Pfeil hoch: Uhr ein- bzw. ausblenden (legt sie an, wenn sie in den Einstellungen aus ist). */
     private void toggleClock() {
@@ -252,12 +256,18 @@ public final class ScreensaverActivity extends Activity implements SurfaceHolder
     }
 
     /**
-     * Pfeil runter: Ortsangabe jetzt kurz einblenden; danach bei jedem neuen Video bzw. neuen Ort
-     * wieder kurz (wie tvOS), bis der Schoner endet.
+     * Pfeil runter: Ortsangabe ein- bzw. ausschalten. Ein: jetzt kurz einblenden, danach bei jedem
+     * neuen Video bzw. neuen Ort wieder kurz (wie tvOS). Aus: sofort ausblenden, bis wieder eingeschaltet.
      */
-    private void showLocation() {
+    private void toggleLocation() {
         if (mode != Prefs.SAVER_AERIALS || player == null) return;
-        locationOn = true;
+        locationOn = !locationEnabled();
+        if (!locationOn) {
+            location.animate().cancel();
+            location.animate().alpha(0f).setStartDelay(0).setDuration(400).withEndAction(null).start();
+            Log.i(TAG, "location off");
+            return;
+        }
         location.setVisibility(View.VISIBLE);
         shownPlace = null;
         try {
@@ -399,7 +409,7 @@ public final class ScreensaverActivity extends Activity implements SurfaceHolder
     /** Beschreibung der Stelle einblenden, sobald das Video sie erreicht; nach 10 s wieder aus. */
     private void updatePlace(int positionMs) {
         SaverSources.Aerial a = playing;
-        if (a == null || !(locationOn || Prefs.saverLocation(this))) return;
+        if (a == null || !locationEnabled()) return;
         java.util.Map.Entry<Integer, String> e = a.places.floorEntry(positionMs / 1000);
         String place = e != null ? e.getValue() : (shownPlace == null ? "" : shownPlace);
         if (shownPlace != null && shownPlace.equals(place)) return;

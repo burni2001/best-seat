@@ -157,10 +157,15 @@ final class ControlIcons {
                     c.drawCircle(5.25f, 10, 0.9f, fill);
                     c.drawCircle(18.75f, 14, 0.9f, fill);
                     break;
-                case "src_tower": // stehende Konsole mit Sockel
-                    c.drawRoundRect(new RectF(8.5f, 3, 15.5f, 19), 2.5f, 2.5f, stroke);
-                    c.drawLine(12, 4.5f, 12, 17.5f, stroke);
-                    c.drawLine(6.5f, 21, 17.5f, 21, stroke);
+                case "src_tower": // stehende Konsole wie PS5: ohne Sockel, oben und unten flach, Seiten zur Mitte hin eingezogen
+                    p.moveTo(8, 3);
+                    p.lineTo(16, 3);
+                    p.quadTo(13.6f, 12, 16, 21);
+                    p.lineTo(8, 21);
+                    p.quadTo(10.4f, 12, 8, 3);
+                    p.close();
+                    c.drawPath(p, stroke);
+                    c.drawLine(12, 5, 12, 19, stroke);
                     break;
                 case "src_gamepad": // Controller
                     c.drawRoundRect(new RectF(2.5f, 7.5f, 21.5f, 17.5f), 5, 5, stroke);
