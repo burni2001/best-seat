@@ -127,7 +127,10 @@ public final class ControlCenterActivity extends Activity {
         panel.setClipChildren(true);
         // Kasten schneidet entlang seiner runden Kontur ab, nicht rechteckig: Sonst ragte der Schatten der
         // fokussierten Eckkachel eckig über die Rundung hinaus.
-        panel.setClipToOutline(true);
+        // Glass: kein Kasten, also auch keine Kontur – sonst schnitte die leere Kontur (Rechteck) die
+        // Schatten der Zeilen ab.
+        panel.setClipToOutline(!LiquidGlass.on);
+        if (LiquidGlass.on) panel.setClipChildren(false);
         panel.setClipToPadding(false);
 
         // Uhrzeit und Profilbild stehen jetzt in der Pille oben rechts (StatusPill), nicht mehr im Kasten.
@@ -663,7 +666,7 @@ public final class ControlCenterActivity extends Activity {
             case ControlItems.HUE_SYNC:
                 return cells.cell("Ambience", "On / off", () -> toggleHue(ControlItems.HUE_SYNC, Companions.HUESYNC + ".TOGGLE"));
             case ControlItems.INPUTS:
-                return cells.cell("Inputs", "HDMI and devices", this::showInputs);
+                return cells.cell("Sources", "HDMI and devices", this::showInputs);
             case ControlItems.PICTURE:
                 return cells.cell("Picture", "Picture settings", () -> launch(PictureSettingsActivity.fresh(new Intent("android.settings.PICTURE_ACTIVITY"))));
             case ControlItems.SOUND:
@@ -688,13 +691,27 @@ public final class ControlCenterActivity extends Activity {
         }
     }
 
+    /**
+     * Überschrift einer Unterseite. Bei Glass ohne Kasten dahinter: in voller Schriftfarbe mit weichem
+     * Schatten, sonst ist sie auf hellen Hintergründen kaum zu lesen.
+     */
+    private TextView caption(String text) {
+        TextView t = Ui.caption(this, text);
+        if (LiquidGlass.on) {
+            t.setTextColor(Ui.TEXT);
+            t.setShadowLayer(Ui.dp(this, 4), 0, Ui.dp(this, 1),
+                    Ui.light ? Color.argb(150, 255, 255, 255) : Color.argb(170, 0, 0, 0));
+        }
+        return t;
+    }
+
     private void showInputs() {
         // Inputs so groß wie die Kachelseite (wie Profil), nicht auf die Zeilen geschrumpft.
         if (body.getTag() == null && panel.getHeight() > 0) mainPanelHeight = panel.getHeight();
         setPanelHeight(mainPanelHeight);
         body.removeAllViews();
         body.setTag("inputs");
-        body.addView(Ui.caption(this, "Inputs"), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+        body.addView(caption("Sources"), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT));
         List<Tile> inputs = AppRepository.inputs(this);
         View first = null;
@@ -703,7 +720,7 @@ public final class ControlCenterActivity extends Activity {
             if (first == null) first = v;
         }
         if (first == null) {
-            body.addView(Ui.dimText(this, "No inputs found"));
+            body.addView(Ui.dimText(this, "No sources found"));
             first = wideRow("Back", this::showMain);
         }
         first.requestFocus();

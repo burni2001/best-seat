@@ -26,7 +26,7 @@ final class ControlItems {
             case SCREENSAVER: return "Screensaver";
             case AMBILIGHT: return "Ambilight";
             case HUE_SYNC: return "Ambience";
-            case INPUTS: return "Inputs";
+            case INPUTS: return "Sources";
             case PICTURE: return "Picture";
             case SOUND: return "Sound";
             case APP_SWITCHER: return "App Switcher";
