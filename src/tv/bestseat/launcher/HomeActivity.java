@@ -331,6 +331,26 @@ public final class HomeActivity extends Activity
 
     /** Auch für die Taste auf der Startseite: gleicher Weg wie Doppel-Home, sonst fehlt das Abbild für das Milchglas (B52). */
     private void openControlCenter(String overPkg) {
+        openControlCenter(overPkg, 0);
+    }
+
+    /**
+     * Fast schwarzes Abbild: Die Startseite war noch nicht gezeichnet (Home-Taste, die Seite kommt gerade
+     * nach vorne). Das Glas wäre damit dunkel und deckend statt durchsichtig; dann kurz warten und neu kopieren.
+     */
+    private static boolean blankShot(android.graphics.Bitmap b) {
+        int max = 0;
+        for (int y = 4; y < b.getHeight(); y += 8) {
+            for (int x = 4; x < b.getWidth(); x += 8) {
+                int p = b.getPixel(x, y);
+                max = Math.max(max, Math.max(Color.red(p), Math.max(Color.green(p), Color.blue(p))));
+                if (max > 24) return false;
+            }
+        }
+        return true;
+    }
+
+    private void openControlCenter(String overPkg, int attempt) {
         ControlCenterActivity.homeBlur = null;
         // Milchglas des Kontrollzentrums: Fensterinhalt der Startseite so, wie er gerade auf dem Bildschirm
         // steht (PixelCopy, auch Hardware-Bitmaps und Weichzeichner), klein kopiert und weichgezeichnet (B48).
@@ -340,7 +360,12 @@ public final class HomeActivity extends Activity
                 final android.graphics.Bitmap small = android.graphics.Bitmap.createBitmap(192, 108,
                         android.graphics.Bitmap.Config.ARGB_8888);
                 android.view.PixelCopy.request(getWindow(), small, result -> {
-                    if (result == android.view.PixelCopy.SUCCESS) ControlCenterActivity.homeBlur = Snapshot.blur(small);
+                    boolean ok = result == android.view.PixelCopy.SUCCESS && !blankShot(small);
+                    if (!ok && attempt < 6 && !isDestroyed()) {
+                        handler.postDelayed(() -> openControlCenter(null, attempt + 1), 60);
+                        return;
+                    }
+                    if (ok) ControlCenterActivity.homeBlur = Snapshot.blur(small);
                     startControlCenter(null);
                 }, handler);
                 return;
