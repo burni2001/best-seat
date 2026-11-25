@@ -168,13 +168,13 @@ final class LiquidGlass {
     static int opacity = OPACITY_DEFAULT;
 
     /**
-     * Deckkraft einer Glasfläche nach dem Regler. 0 ist nicht ganz durchsichtig (30 % der bisherigen
+     * Deckkraft einer Glasfläche nach dem Regler. 0 ist nicht ganz durchsichtig (8 % der bisherigen
      * Deckkraft, Wunsch des Nutzers), 100 fast deckend. Deckende Farben (Fokus weiß) bleiben unverändert.
      */
     static int alpha(int a) {
         if (!on || a >= 255) return a;
         int v = Math.max(0, Math.min(100, opacity));
-        float f = v <= OPACITY_DEFAULT ? 0.3f + 0.7f * v / OPACITY_DEFAULT
+        float f = v <= OPACITY_DEFAULT ? 0.08f + 0.92f * v / OPACITY_DEFAULT
                 : 1f + 1.5f * (v - OPACITY_DEFAULT) / (100f - OPACITY_DEFAULT);
         return Math.max(1, Math.min(245, Math.round(a * f)));
     }
@@ -244,7 +244,10 @@ final class LiquidGlass {
                 + "      : (d.x > d.y ? float2(sign(q.x), 0.0) : float2(0.0, sign(q.y)));"
                 + "  return img.eval(center + q / zoom + n * (t * t * band * bend));"
                 + "}";
-        private static final float ZOOM = 1.18f;
+        // Lupe vor allem am Rand (Wunsch des Nutzers): Mitte nur leicht vergrößert, breites, stark gebogenes Randband.
+        private static final float ZOOM = 1.06f;
+        private static final float BAND_DP = 28f;
+        private static final float BEND = 1.6f;
         private final Path clip = new Path();
         private final int[] loc = new int[2];
         private final Paint image = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.ANTI_ALIAS_FLAG);
@@ -292,8 +295,8 @@ final class LiquidGlass {
                 s.setFloatUniform("half", box.width() / 2f, box.height() / 2f);
                 s.setFloatUniform("radius", radius);
                 s.setFloatUniform("zoom", ZOOM);
-                s.setFloatUniform("band", Math.min(16f * density, Math.min(box.width(), box.height()) / 2f));
-                s.setFloatUniform("bend", 0.9f);
+                s.setFloatUniform("band", Math.min(BAND_DP * density, Math.min(box.width(), box.height()) / 2f));
+                s.setFloatUniform("bend", BEND);
                 image.setShader(s);
                 canvas.drawPath(clip, image);
                 image.setShader(null);
