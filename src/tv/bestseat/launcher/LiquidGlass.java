@@ -282,10 +282,11 @@ final class LiquidGlass {
                 + "  float dist = (m > 0.0 ? length(max(d, 0.0)) + min(m, 0.0) : soft) - radius;"
                 + "  float t = clamp(1.0 + dist / band, 0.0, 1.0);"
                 + "  float2 n = m > 0.0 ? normalize(max(d, 0.0)) * sign(q) : normalize(w) * sign(q);"
-                // S curve with a slight overshoot: the picture is squeezed and folds back near the edge.
+                // Monotonic squeeze: the picture is compressed towards the edge but never folds back. With a
+                // bend above ~0.5 the sampled position ran backwards inside the band (mirrored, smeared strips).
                 // The offset points INTO the glass and is clamped to the box: the edge only shows what lies under
                 // the glass itself, never colours of the neighbours around it.
-                + "  float disp = min(band * bend * t * t * (1.0 + 0.3 * sin(6.2832 * t)), 0.9 * min(halfSize.x, halfSize.y));"
+                + "  float disp = min(band * bend * t * t, 0.9 * min(halfSize.x, halfSize.y));"
                 + "  float2 base = center + q / zoom;"
                 + "  float2 lo = center - halfSize + 1.0;"
                 + "  float2 hi = center + halfSize - 1.0;"
@@ -302,7 +303,7 @@ final class LiquidGlass {
         // Lupe vor allem am Rand (Wunsch des Nutzers): Mitte nur leicht vergrößert, breites, stark gebogenes Randband.
         private static final float ZOOM = 1.06f;
         private static final float BAND_DP = 34f;
-        private static final float BEND = 1.9f;
+        private static final float BEND = 0.45f;
         private static final float CHROMA = 0.05f; // colour fringe
         private static final float RIM = 0.16f; // light edge
         private final Path clip = new Path();
