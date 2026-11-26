@@ -332,19 +332,34 @@ final class TopShelf {
      * zwischen Karte und App neu über (B41).
      */
     /** Glass: Starthintergrund (Bild + Abdunklung) klein und weichgezeichnet für die Lupe der Ordnerkacheln. */
+    private final java.util.concurrent.ExecutorService lensWorker = java.util.concurrent.Executors.newSingleThreadExecutor();
+    private final java.util.concurrent.atomic.AtomicInteger lensGen = new java.util.concurrent.atomic.AtomicInteger();
+
+    /**
+     * Built off the UI thread: scaling and blurring on every background change stalled the focus
+     * animation when stepping through favourites. Only the newest request is published.
+     */
     private void updateLensShot(Bitmap from) {
         if (!LiquidGlass.on) return;
-        try {
-            Bitmap small = Bitmap.createBitmap(240, 135, Bitmap.Config.ARGB_8888);
-            Canvas c = new Canvas(small);
-            c.drawColor(Ui.BACKGROUND);
-            c.drawBitmap(from, null, new Rect(0, 0, 240, 135), new android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG));
-            c.drawColor(Ui.light ? Color.argb(115, 255, 255, 255) : Color.argb(105, 0, 0, 0));
-            FolderDrawable.homeShot = Snapshot.blur(small, 3, 3); // cheap: runs on every background change
-            FolderDrawable.refreshGlass();
-        } catch (RuntimeException e) {
-            // Ohne Abbild bleibt die Ordnerkachel ohne Lupe.
-        }
+        final int gen = lensGen.incrementAndGet();
+        final boolean light = Ui.light;
+        final int base = Ui.BACKGROUND;
+        lensWorker.execute(() -> {
+            if (gen != lensGen.get()) return;
+            try {
+                Bitmap small = Bitmap.createBitmap(240, 135, Bitmap.Config.ARGB_8888);
+                Canvas c = new Canvas(small);
+                c.drawColor(base);
+                c.drawBitmap(from, null, new Rect(0, 0, 240, 135), new android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG));
+                c.drawColor(light ? Color.argb(115, 255, 255, 255) : Color.argb(105, 0, 0, 0));
+                Bitmap blurred = Snapshot.blur(small, 3, 3);
+                if (blurred == null || gen != lensGen.get()) return;
+                FolderDrawable.homeShot = blurred;
+                home.handler.post(FolderDrawable::refreshGlass);
+            } catch (RuntimeException e) {
+                // Without a shot the folder tile has no lens.
+            }
+        });
     }
 
     private void setBackdrop(Drawable d, String sourceKey) {
