@@ -246,8 +246,15 @@ final class UpdateChecker {
         if (Permissions.granted(a, Permissions.ADB)) {
             new Thread(() -> {
                 try {
-                    // The process ends when the new build replaces this one; the result may never arrive.
-                    tv.bestseat.launcher.switcher.AdbClient.shell(app, "pm install -r --user 0 " + f.getPath(), 120000);
+                    // The package manager cannot read the app's folder on the shared storage (SELinux: "fuse"),
+                    // so the shell copies the file to /data/local/tmp first. When the new build replaces this one the
+                    // process ends and nothing comes back; any answer that does come back means the install failed.
+                    String tmp = "/data/local/tmp/bestseat-update.apk";
+                    String out = tv.bestseat.launcher.switcher.AdbClient.shell(app, "cp " + f.getPath() + " " + tmp
+                            + " && pm install -r --user 0 " + tmp + "; rm -f " + tmp, 120000);
+                    if (out != null && out.contains("Success")) return;
+                    Log.w(TAG, "adb install did not replace the app: " + out);
+                    MAIN.post(() -> installWithSystem(a, f));
                 } catch (Exception e) {
                     Log.w(TAG, "adb install failed, using the installer", e);
                     MAIN.post(() -> installWithSystem(a, f));
