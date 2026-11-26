@@ -14,9 +14,10 @@ final class ControlItems {
     static final String HOME = "home";
     static final String RESTART = "restart";
     static final String ALL_APPS = "allapps";
+    static final String QUICK = "quicksettings"; // TCL only
 
     static final String[] IDS = {SCREENSAVER, AMBILIGHT, HUE_SYNC, INPUTS, PICTURE, SOUND, APP_SWITCHER, VPN,
-            SETTINGS, HOME, RESTART, ALL_APPS};
+            SETTINGS, HOME, RESTART, ALL_APPS, QUICK};
 
     private ControlItems() {
     }
@@ -35,7 +36,41 @@ final class ControlItems {
             case HOME: return "Settings";
             case RESTART: return "Restart";
             case ALL_APPS: return "All Apps";
+            case QUICK: return "Quick Settings";
             default: return id;
         }
+    }
+
+    static final String TCL_SETTINGS = "com.android.tv.settings";
+    static final String TCL_SHOW_WINDOW = "com.tcl.settings.SHOW_WINDOW";
+
+    /** False for tiles whose target does not exist on this TV (Philips-only tiles, TCL-only tile). */
+    static boolean available(android.content.Context c, String id) {
+        switch (id) {
+            case RESTART:
+                return installed(c, "org.droidtv.tvsystemui");
+            case AMBILIGHT:
+            case HUE_SYNC:
+                return installed(c, Companions.HUESYNC);
+            case QUICK:
+                return tclMenu(c);
+            default:
+                return true;
+        }
+    }
+
+    static boolean installed(android.content.Context c, String pkg) {
+        try {
+            c.getPackageManager().getPackageInfo(pkg, 0);
+            return true;
+        } catch (android.content.pm.PackageManager.NameNotFoundException e) {
+            return false;
+        }
+    }
+
+    /** The TCL service that opens the picture, sound and quick menus exists. */
+    static boolean tclMenu(android.content.Context c) {
+        return c.getPackageManager().resolveService(
+                new android.content.Intent(TCL_SHOW_WINDOW).setPackage(TCL_SETTINGS), 0) != null;
     }
 }

@@ -182,7 +182,8 @@ public final class ControlCenterActivity extends Activity {
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(Ui.dp(this, PANEL_DP),
                 ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.END | Gravity.TOP);
         lp.topMargin = Ui.dp(this, StatusPill.TOP_DP + StatusPill.HEIGHT_DP + 8.5f);
-        lp.rightMargin = Ui.dp(this, StatusPill.RIGHT_DP);
+        // Glass has no visible box: move it right by the list's inset (12 dp) so the tiles end flush with the pill.
+        lp.rightMargin = Ui.dp(this, StatusPill.RIGHT_DP - (LiquidGlass.on ? 12 : 0));
         lp.bottomMargin = Ui.dp(this, 20);
         root.addView(panel, lp);
         root.addView(pill, pill.frameParams());
@@ -190,6 +191,14 @@ public final class ControlCenterActivity extends Activity {
 
         if (sourcesOnly) {
             // Sources-Taste: gleich die Eingänge, Fokus auf dem ersten.
+            // Opened directly, the tile page was never laid out: measure it first, so the box gets
+            // the same height as when Sources is opened from the Control Center.
+            showMain();
+            int screenH = getResources().getDisplayMetrics().heightPixels;
+            panel.measure(View.MeasureSpec.makeMeasureSpec(Ui.dp(this, PANEL_DP), View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(Math.max(0, screenH - lp.topMargin - lp.bottomMargin),
+                            View.MeasureSpec.AT_MOST));
+            mainPanelHeight = panel.getMeasuredHeight();
             showInputs();
         } else {
             showMain();
@@ -506,7 +515,7 @@ public final class ControlCenterActivity extends Activity {
         // kleine quadratische Symbol-Kacheln (vier je Reihe). Ab der sechsten Kachel also klein.
         cells.reset(5);
         for (String id : Prefs.controlOrder(this)) {
-            if (hidden.contains(id)) continue;
+            if (hidden.contains(id) || !ControlItems.available(this, id)) continue;
             cells.building(id);
             View v = addItem(id, vpn);
             v.setTag(id);
@@ -676,9 +685,11 @@ public final class ControlCenterActivity extends Activity {
             case ControlItems.INPUTS:
                 return cells.cell("Sources", "HDMI and devices", this::showInputs);
             case ControlItems.PICTURE:
-                return cells.cell("Picture", "Picture settings", () -> launch(PictureSettingsActivity.fresh(new Intent("android.settings.PICTURE_ACTIVITY"))));
+                return cells.cell("Picture", "Picture settings", () -> launchOrTcl(new Intent("android.settings.PICTURE_ACTIVITY"), "picture"));
             case ControlItems.SOUND:
-                return cells.cell("Sound", "Sound and output", () -> launch(PictureSettingsActivity.fresh(new Intent("android.settings.SOUND_SETTINGS"))));
+                return cells.cell("Sound", "Sound and output", () -> launchOrTcl(new Intent("android.settings.SOUND_SETTINGS"), "sound"));
+            case ControlItems.QUICK:
+                return cells.cell("Quick Settings", "Picture, sound and more", () -> showTclMenu("quicksettings"));
             case ControlItems.APP_SWITCHER:
                 // Eigener App Switcher im Launcher (seit 0.6.0, vorher eigene App).
                 return cells.cell("App Switcher", "Recent apps", () -> launch(new Intent(this,
@@ -776,6 +787,38 @@ public final class ControlCenterActivity extends Activity {
             return;
         }
         launch(i);
+    }
+
+
+    /** TCL: opens the picture, sound or quick menu as an overlay from the TvSettings service. */
+    private boolean showTclMenu(String type) {
+        try {
+            Intent i = new Intent(ControlItems.TCL_SHOW_WINDOW).setPackage(ControlItems.TCL_SETTINGS).putExtra("Type", type);
+            if (startForegroundService(i) == null) return false;
+            finish();
+            Ui.transition(this, 0, 0);
+            return true;
+        } catch (RuntimeException e) {
+            Log.w(TAG, "TCL menu failed: " + type, e);
+            Toast.makeText(this, "Not available", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+    }
+
+    /** Philips activity first; if this TV has none, the TCL overlay; the generic Android page comes last. */
+    private void launchOrTcl(Intent philips, String tclType) {
+        if (philips.resolveActivity(getPackageManager()) != null && !isTcl()) {
+            launch(PictureSettingsActivity.fresh(philips));
+        } else if (ControlItems.tclMenu(this)) {
+            showTclMenu(tclType);
+        } else {
+            launch(PictureSettingsActivity.fresh(philips));
+        }
+    }
+
+    /** The TCL service exists, and this is no Philips TV. */
+    private boolean isTcl() {
+        return ControlItems.tclMenu(this) && !ControlItems.installed(this, "org.droidtv.tvsystemui");
     }
 
     private void launch(Intent intent) {

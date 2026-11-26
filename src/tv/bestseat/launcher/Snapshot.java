@@ -5,17 +5,26 @@ import android.graphics.Bitmap;
 /**
  * Verkleinertes, weichgezeichnetes Abbild einer Ansicht (Hintergrund des Kontrollzentrums, W101).
  * Die Startseite zeichnet sich selbst, ohne adb und ohne Fensterunschärfe des Systems; das Ergebnis ist
- * klein (192×108) und wird beim Anzeigen hochskaliert, das glättet zusätzlich.
+ * klein (480×270) und wird beim Anzeigen hochskaliert, das glättet zusätzlich.
  */
 public final class Snapshot {
 
-    private static final int BLUR_RADIUS = 3;
-    private static final int BLUR_PASSES = 3;
+    private static final int BLUR_RADIUS = 2;
+    private static final int BLUR_PASSES = 2;
 
     private Snapshot() {}
 
     /** Kleines Bild in sich weichzeichnen (3 Kastenfilter-Durchgänge, wirkt fast gaußsch). */
     static Bitmap blur(Bitmap bmp) {
+        return blur(bmp, BLUR_RADIUS, BLUR_PASSES);
+    }
+
+    /** Stronger variant for folder backdrops: the open folder must not show details of the home page. */
+    static Bitmap blurHeavy(Bitmap bmp) {
+        return blur(bmp, 7, 3);
+    }
+
+    static Bitmap blur(Bitmap bmp, int radius, int passes) {
         try {
             int w = bmp.getWidth(), h = bmp.getHeight();
             int[] px = new int[w * h];
@@ -26,10 +35,10 @@ public final class Snapshot {
                 g[i] = (px[i] >> 8) & 0xff;
                 b[i] = px[i] & 0xff;
             }
-            for (int pass = 0; pass < BLUR_PASSES; pass++) {
-                boxBlur(r, w, h, BLUR_RADIUS);
-                boxBlur(g, w, h, BLUR_RADIUS);
-                boxBlur(b, w, h, BLUR_RADIUS);
+            for (int pass = 0; pass < passes; pass++) {
+                boxBlur(r, w, h, radius);
+                boxBlur(g, w, h, radius);
+                boxBlur(b, w, h, radius);
             }
             for (int i = 0; i < px.length; i++) px[i] = 0xff000000 | (r[i] << 16) | (g[i] << 8) | b[i];
             bmp.setPixels(px, 0, w, 0, 0, w, h);

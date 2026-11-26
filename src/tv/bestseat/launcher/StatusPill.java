@@ -2,6 +2,7 @@ package tv.bestseat.launcher;
 
 import android.animation.ValueAnimator;
 import android.app.Activity;
+import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.util.TypedValue;
@@ -34,6 +35,8 @@ final class StatusPill extends LinearLayout {
     /** Nur im Kontrollzentrum: Schalter-Symbol (sonst null). */
     final FrameLayout controls;
     private ControlIcons.Icon controlsIcon;
+    /** Shown when a newer release exists and notifications are on; focusable only in the Control Center. */
+    private final FrameLayout updateIcon;
     private String selected;
     private final GradientDrawable pillBg;
     private float depth;
@@ -46,7 +49,7 @@ final class StatusPill extends LinearLayout {
     private static int pillColor(float depth) {
         int a = Ui.light ? Math.round(HOME_ALPHA_LIGHT + (CC_ALPHA_LIGHT - HOME_ALPHA_LIGHT) * depth)
                 : Math.round(HOME_ALPHA_DARK + (CC_ALPHA_DARK - HOME_ALPHA_DARK) * depth);
-        return Ui.light ? Color.argb(a, 255, 255, 255) : Color.argb(a, 0, 0, 0);
+        return Ui.light ? Color.argb(a, 255, 255, 255) : Color.argb(a, LiquidGlass.on ? LiquidGlass.darkLift() : 0, LiquidGlass.on ? LiquidGlass.darkLift() : 0, LiquidGlass.on ? LiquidGlass.darkLift() : 0);
     }
 
     /** 0 = Farbe der Startseite, 1 = Farbe im Kontrollzentrum. */
@@ -102,6 +105,25 @@ final class StatusPill extends LinearLayout {
         tlp.rightMargin = dp(8);
         addView(time, tlp);
 
+        updateIcon = new FrameLayout(activity);
+        ImageView uv = new ImageView(activity);
+        uv.setImageDrawable(new ControlIcons.Icon("update", Ui.TEXT).strokeWidth(1.8f));
+        int up = dp(6);
+        uv.setPadding(up, up, up, up);
+        updateIcon.addView(uv, new FrameLayout.LayoutParams(dp(BUTTON_DP), dp(BUTTON_DP)));
+        LayoutParams ulp = new LayoutParams(dp(BUTTON_DP), dp(BUTTON_DP));
+        ulp.rightMargin = dp(4);
+        addView(updateIcon, ulp);
+        if (withControls) {
+            updateIcon.setFocusable(true);
+            updateIcon.setClickable(true);
+            updateIcon.setOnFocusChangeListener((v, has) ->
+                    v.animate().scaleX(has ? 1.15f : 1f).scaleY(has ? 1.15f : 1f).setDuration(Ui.ms(140)).start());
+            updateIcon.setOnClickListener(v -> activity.startActivity(new Intent(activity, SettingsActivity.class)
+                    .putExtra(SettingsActivity.EXTRA_PAGE, "updates")));
+        }
+        refreshUpdate();
+
         if (withControls) {
             controls = new FrameLayout(activity);
             controls.setFocusable(true);
@@ -141,6 +163,12 @@ final class StatusPill extends LinearLayout {
         refreshClock();
     }
 
+    /** Update icon: only with a newer release found and "Notify about updates" on. */
+    void refreshUpdate() {
+        boolean show = Prefs.updateNotify(activity) && UpdateChecker.available(activity);
+        updateIcon.setVisibility(show ? View.VISIBLE : View.GONE);
+    }
+
     /** Startseite: Uhrzeit ausblendbar (nur Profilbild). Im Kontrollzentrum bleibt sie immer. */
     void refreshClock() {
         if (controls != null) return;
@@ -173,7 +201,7 @@ final class StatusPill extends LinearLayout {
         if (controls == null) return;
         boolean focused = controls.isFocused();
         int bg = focused ? Ui.ROW_FOCUSED : "controls".equals(selected)
-                ? (Ui.light ? Color.argb(45, 0, 0, 0) : Color.argb(140, 0, 0, 0)) : Color.TRANSPARENT;
+                ? (Ui.light ? Color.argb(45, 0, 0, 0) : Color.argb(140, 96, 98, 104)) : Color.TRANSPARENT;
         GradientDrawable d = new GradientDrawable();
         d.setShape(GradientDrawable.OVAL);
         d.setColor(bg);

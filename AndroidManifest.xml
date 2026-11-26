@@ -8,6 +8,7 @@
     <!-- VPN-Anzeige in der Kopfzeile. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- Top Shelf: Vorschaukanäle und Watch Next der Apps (normale Berechtigung). -->
     <uses-permission android:name="com.android.providers.tv.permission.READ_EPG_DATA" />
     <uses-permission android:name="android.permission.READ_TV_LISTINGS" />

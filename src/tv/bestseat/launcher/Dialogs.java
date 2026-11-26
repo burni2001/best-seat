@@ -74,10 +74,10 @@ final class Dialogs {
         try {
             View root = activity.getWindow().getDecorView();
             if (root.getWidth() <= 0 || root.getHeight() <= 0) return null;
-            android.graphics.Bitmap small = android.graphics.Bitmap.createBitmap(192, 108,
+            android.graphics.Bitmap small = android.graphics.Bitmap.createBitmap(480, 270,
                     android.graphics.Bitmap.Config.ARGB_8888);
             android.graphics.Canvas c = new android.graphics.Canvas(small);
-            c.scale(192f / root.getWidth(), 108f / root.getHeight());
+            c.scale(480f / root.getWidth(), 270f / root.getHeight());
             root.draw(c);
             c.drawColor(Color.argb(77, 0, 0, 0));
             return Snapshot.blur(small);
@@ -186,13 +186,13 @@ final class Dialogs {
     private static android.graphics.Bitmap lensBackdrop(android.graphics.Bitmap backdrop) {
         if (backdrop == null) return null;
         try {
-            android.graphics.Bitmap small = android.graphics.Bitmap.createBitmap(192, 108,
+            android.graphics.Bitmap small = android.graphics.Bitmap.createBitmap(480, 270,
                     android.graphics.Bitmap.Config.ARGB_8888);
             android.graphics.Canvas c = new android.graphics.Canvas(small);
-            c.drawBitmap(backdrop, null, new android.graphics.Rect(0, 0, 192, 108),
+            c.drawBitmap(backdrop, null, new android.graphics.Rect(0, 0, 480, 270),
                     new android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG));
             c.drawColor(Color.argb(128, 130, 130, 130));
-            return Snapshot.blur(small);
+            return Snapshot.blurHeavy(small);
         } catch (RuntimeException e) {
             return null;
         }

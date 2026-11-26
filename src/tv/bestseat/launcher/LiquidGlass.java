@@ -118,7 +118,7 @@ final class LiquidGlass {
     private static void draw(Canvas c, Path shape, RectF r, float density, float strength, boolean body) {
         if (r.width() <= 0 || r.height() <= 0) return;
         boolean light = Ui.light;
-        float s = Math.max(0f, Math.min(1f, strength));
+        float s = Math.max(0f, Math.min(1f, strength)) * 0.7f; // highlights toned down
         // Neutral weiß: Der Blaustich wirkte im Dunkeln zu kräftig (Wunsch des Nutzers); Farbe kommt nur vom Hintergrund.
         int tint = Color.WHITE;
         c.save();
@@ -174,9 +174,9 @@ final class LiquidGlass {
     static int alpha(int a) {
         if (!on || a >= 255) return a;
         int v = Math.max(0, Math.min(100, opacity));
-        float f = v <= OPACITY_DEFAULT ? 0.08f + 0.92f * v / OPACITY_DEFAULT
+        float f = v <= OPACITY_DEFAULT ? 0.6f + 0.4f * v / OPACITY_DEFAULT
                 : 1f + 1.5f * (v - OPACITY_DEFAULT) / (100f - OPACITY_DEFAULT);
-        return Math.max(1, Math.min(245, Math.round(a * f)));
+        return Math.max(1, Math.min(Ui.light ? 245 : 212, Math.round(a * f))); // dark stays slightly see-through at 100
     }
 
     /**
@@ -186,7 +186,17 @@ final class LiquidGlass {
     static int backdropAlpha() {
         int v = Math.max(0, Math.min(100, opacity));
         if (v >= OPACITY_DEFAULT) return 255;
-        return Math.round(255 * (0.1f + 0.9f * v / OPACITY_DEFAULT));
+        return Math.round(255 * (0.85f + 0.15f * v / OPACITY_DEFAULT));
+    }
+
+    /**
+     * Dark glass turns from black to dark grey above the default opacity (0..95 added to each channel, 45 at opacity 0 so the thin tint is grey too),
+     * because a nearly opaque black tint looks like a hole, not like glass.
+     */
+    static int darkLift() {
+        int v = Math.max(0, Math.min(100, opacity));
+        return v <= OPACITY_DEFAULT ? Math.round(45f * (OPACITY_DEFAULT - v) / OPACITY_DEFAULT)
+                : Math.round(95f * (v - OPACITY_DEFAULT) / (100f - OPACITY_DEFAULT));
     }
 
     /** Wie alpha(int), auf eine Farbe angewandt. */
@@ -223,7 +233,11 @@ final class LiquidGlass {
          */
         Rounded solid(int rgb) {
             int v = Math.max(0, Math.min(100, opacity));
-            super.setColor((Math.round(150 + 80 * v / 100f) << 24) | (rgb & 0xFFFFFF));
+            if (Color.red(rgb) < 100) { // dark base: lift towards grey at high opacity
+                int lift = darkLift();
+                rgb = Color.rgb(Color.red(rgb) + lift, Color.green(rgb) + lift, Color.blue(rgb) + lift);
+            }
+            super.setColor((Math.round(150 + (Ui.light ? 80 : 60) * v / 100f) << 24) | (rgb & 0xFFFFFF));
             return this;
         }
 
@@ -252,22 +266,45 @@ final class LiquidGlass {
      */
     static final class Lens {
         private static final String LENS = ""
-                + "uniform shader img; uniform float2 center; uniform float2 half; uniform float radius;"
-                + "uniform float zoom; uniform float band; uniform float bend;"
+                + "uniform shader img; uniform float2 center; uniform float2 halfSize; uniform float radius;"
+                + "uniform float zoom; uniform float band; uniform float bend; uniform float chroma; uniform float rim;"
                 + "half4 main(float2 p) {"
                 + "  float2 q = p - center;"
-                + "  float2 b = half - radius;"
+                + "  float2 b = halfSize - radius;"
                 + "  float2 d = abs(q) - b;"
-                + "  float dist = length(max(d, 0.0)) + min(max(d.x, d.y), 0.0) - radius;"
+                // Inside the straight part both distances are negative. A hard max() / axis pick makes the normal
+                // flip along the diagonal of every corner (a visible crack on large boxes), so blend both axes
+                // smoothly (soft max) instead.
+                + "  float m = max(d.x, d.y);"
+                + "  float k = 0.25 * band;"
+                + "  float2 w = exp((d - m) / k);"
+                + "  float soft = m + k * log(w.x + w.y);"
+                + "  float dist = (m > 0.0 ? length(max(d, 0.0)) + min(m, 0.0) : soft) - radius;"
                 + "  float t = clamp(1.0 + dist / band, 0.0, 1.0);"
-                + "  float2 n = max(d.x, d.y) > 0.0 ? normalize(max(d, 0.0)) * sign(q)"
-                + "      : (d.x > d.y ? float2(sign(q.x), 0.0) : float2(0.0, sign(q.y)));"
-                + "  return img.eval(center + q / zoom + n * (t * t * band * bend));"
+                + "  float2 n = m > 0.0 ? normalize(max(d, 0.0)) * sign(q) : normalize(w) * sign(q);"
+                // S curve with a slight overshoot: the picture is squeezed and folds back near the edge.
+                // The offset points INTO the glass and is clamped to the box: the edge only shows what lies under
+                // the glass itself, never colours of the neighbours around it.
+                + "  float disp = min(band * bend * t * t * (1.0 + 0.3 * sin(6.2832 * t)), 0.9 * min(halfSize.x, halfSize.y));"
+                + "  float2 base = center + q / zoom;"
+                + "  float2 lo = center - halfSize + 1.0;"
+                + "  float2 hi = center + halfSize - 1.0;"
+                // Red, green and blue read at slightly different offsets: a thin colour fringe at the edge.
+                + "  half4 g = img.eval(clamp(base - n * disp, lo, hi));"
+                + "  half r = img.eval(clamp(base - n * disp * (1.0 + chroma), lo, hi)).r;"
+                + "  half bl = img.eval(clamp(base - n * disp * (1.0 - chroma), lo, hi)).b;"
+                + "  half3 col = half3(r, g.g, bl);"
+                // Light edge that fades towards the middle.
+                + "  float edge = pow(t, 8.0) * rim;"
+                + "  col = col + half3(edge);"
+                + "  return half4(col, g.a);"
                 + "}";
         // Lupe vor allem am Rand (Wunsch des Nutzers): Mitte nur leicht vergrößert, breites, stark gebogenes Randband.
         private static final float ZOOM = 1.06f;
-        private static final float BAND_DP = 28f;
-        private static final float BEND = 1.6f;
+        private static final float BAND_DP = 34f;
+        private static final float BEND = 1.9f;
+        private static final float CHROMA = 0.05f; // colour fringe
+        private static final float RIM = 0.16f; // light edge
         private final Path clip = new Path();
         private final int[] loc = new int[2];
         private final Paint image = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.ANTI_ALIAS_FLAG);
@@ -311,19 +348,23 @@ final class LiquidGlass {
                 android.graphics.RuntimeShader s = (android.graphics.RuntimeShader) shader;
                 android.graphics.BitmapShader src = new android.graphics.BitmapShader(backdrop,
                         Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
+                src.setFilterMode(android.graphics.BitmapShader.FILTER_MODE_LINEAR); // smooth, not stair-stepped, when magnified
                 src.setLocalMatrix(map);
                 s.setInputShader("img", src);
                 s.setFloatUniform("center", box.centerX(), box.centerY());
-                s.setFloatUniform("half", box.width() / 2f, box.height() / 2f);
+                s.setFloatUniform("halfSize", box.width() / 2f, box.height() / 2f);
                 s.setFloatUniform("radius", radius);
                 s.setFloatUniform("zoom", ZOOM);
                 s.setFloatUniform("band", Math.min(BAND_DP * density, Math.min(box.width(), box.height()) / 2f));
                 s.setFloatUniform("bend", BEND);
+                s.setFloatUniform("chroma", CHROMA);
+                s.setFloatUniform("rim", RIM);
                 image.setShader(s);
                 canvas.drawPath(clip, image);
                 image.setShader(null);
                 return true;
             } catch (RuntimeException e) {
+                android.util.Log.w("Launcher", "lens shader failed", e);
                 shader = null;
                 image.setShader(null);
                 return false;

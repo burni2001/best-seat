@@ -407,4 +407,63 @@ public final class Prefs {
     static void setGlassOpacity(Context c, int value) {
         put(c, K_GLASS_OPACITY, Math.max(0, Math.min(100, value)));
     }
+
+    // ---- Updates (Settings > General > Updates)
+    private static final String K_UPD_INTERVAL = "update_interval";
+    private static final String K_UPD_NOTIFY = "update_notify";
+    private static final String K_UPD_LAST = "update_last_check";
+    private static final String K_UPD_VERSION = "update_version";
+    private static final String K_UPD_URL = "update_url";
+    private static final String K_UPD_RELEASES = "update_releases";
+
+    /** 0 Never, 1 Daily, 2 Weekly, 3 Monthly. */
+    static int updateInterval(Context c) {
+        return getInt(c, K_UPD_INTERVAL, 0);
+    }
+
+    static void setUpdateInterval(Context c, int value) {
+        put(c, K_UPD_INTERVAL, value);
+    }
+
+    static boolean updateNotify(Context c) {
+        return getBool(c, K_UPD_NOTIFY, true);
+    }
+
+    static void setUpdateNotify(Context c, boolean value) {
+        put(c, K_UPD_NOTIFY, value);
+    }
+
+    static long updateLastCheck(Context c) {
+        return sp(c).getLong(K_UPD_LAST, 0L);
+    }
+
+    static void setUpdateLastCheck(Context c, long value) {
+        sp(c).edit().putLong(K_UPD_LAST, value).apply();
+    }
+
+    /** Newest release found by the last check ("" if none). */
+    static String updateVersion(Context c) {
+        return sp(c).getString(K_UPD_VERSION, "");
+    }
+
+    static void setUpdateVersion(Context c, String value) {
+        sp(c).edit().putString(K_UPD_VERSION, value).apply();
+    }
+
+    static String updateUrl(Context c) {
+        return sp(c).getString(K_UPD_URL, "");
+    }
+
+    static void setUpdateUrl(Context c, String value) {
+        sp(c).edit().putString(K_UPD_URL, value).apply();
+    }
+
+    /** JSON list of the latest releases (tag, notes, apk) for the changelog. */
+    static String updateReleases(Context c) {
+        return sp(c).getString(K_UPD_RELEASES, "[]");
+    }
+
+    static void setUpdateReleases(Context c, String value) {
+        sp(c).edit().putString(K_UPD_RELEASES, value).apply();
+    }
 }

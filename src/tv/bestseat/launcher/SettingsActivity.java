@@ -79,6 +79,8 @@ public final class SettingsActivity extends Activity {
         slp.topMargin = Ui.dp(this, 86);
         root.addView(scroll, slp);
         setContentView(root);
+        String firstPage = getIntent().getStringExtra(EXTRA_PAGE);
+        if (PAGE_UPDATES.equals(firstPage)) page = PAGE_UPDATES;
         build();
         if (focusAfterRecreate != null) {
             focusTag(focusAfterRecreate);
@@ -96,6 +98,10 @@ public final class SettingsActivity extends Activity {
     private static final String PAGE_BACKUP = "backup";
     private static final String PAGE_VPN_APPS = "vpn_apps";
     private static final String PAGE_PERMISSIONS = "permissions";
+    private static final String PAGE_UPDATES = "updates";
+    private static final String PAGE_CHANGELOG = "changelog";
+    /** Optional Intent extra: open this page first (the update icon in the pill opens "updates"). */
+    static final String EXTRA_PAGE = "page";
     /** Auswahl einer Option als eigene Unterseite mit Haken (wie tvOS „Erscheinungsbild“). */
     private static final String PAGE_CHOICE = "choice";
     private String choiceTitle;
@@ -137,6 +143,12 @@ public final class SettingsActivity extends Activity {
         } else if (PAGE_PERMISSIONS.equals(page)) {
             title.setText("Permissions");
             permissionRows();
+        } else if (PAGE_UPDATES.equals(page)) {
+            title.setText("Updates");
+            updateRows();
+        } else if (PAGE_CHANGELOG.equals(page)) {
+            title.setText("Changelog");
+            changelogRows();
         } else if (PAGE_BACKUP.equals(page)) {
             title.setText("Backup");
             backupRows();
@@ -155,6 +167,7 @@ public final class SettingsActivity extends Activity {
         else if (PAGE_SWITCHER.equals(page) || PAGE_SWITCHER_HIDDEN.equals(page)) icon = ControlItems.APP_SWITCHER;
         else if (PAGE_BACKUP.equals(page)) icon = ControlItems.RESTART;
         else if (PAGE_PERMISSIONS.equals(page)) icon = ControlItems.VPN;
+        else if (PAGE_UPDATES.equals(page) || PAGE_CHANGELOG.equals(page)) icon = "update";
         else if (PAGE_VPN_APPS.equals(page)) icon = ControlItems.VPN;
         else if (PAGE_CHOICE.equals(page)) icon = choiceIcon;
         else icon = ControlItems.HOME;
@@ -288,10 +301,92 @@ public final class SettingsActivity extends Activity {
         section("General");
         group(PAGE_BACKUP, "Backup", "Save or restore tiles, folders and settings.");
         group(PAGE_PERMISSIONS, "Permissions", "Check and allow what Best Seat needs.");
+        group(PAGE_UPDATES, "Updates", "Look for a new version and install it.");
         row("Setup Assistant", null, "Run the first-start setup again.")
                 .setOnClickListener(v -> startActivity(new Intent(HomeActivity.ACTION_SETUP)
                         .setClass(this, HomeActivity.class)));
         row("About", null, "See the version and credits.").setOnClickListener(v -> Dialogs.about(this));
+    }
+
+    private boolean updating;
+
+    /** Settings > General > Updates. */
+    private void updateRows() {
+        section("Check");
+        choiceRow("Check for updates", UpdateChecker.INTERVAL_NAMES, () -> Prefs.updateInterval(this),
+                i -> Prefs.setUpdateInterval(this, i), "Choose how often Best Seat looks for a new version.", "upd_interval");
+        TextView status = Ui.dimText(this, UpdateChecker.checking() ? "Checking\u2026"
+                : Prefs.updateLastCheck(this) == 0L ? "Not checked yet"
+                : UpdateChecker.available(this) ? "Update found" : "Up to date");
+        LinearLayout check = row("Check now", status, "Look for a new version on GitHub now.");
+        check.setTag("upd_check");
+        check.setOnClickListener(v -> {
+            if (UpdateChecker.checking()) return;
+            status.setText("Checking\u2026");
+            UpdateChecker.check(this, ok -> {
+                if (isDestroyed()) return;
+                if (!ok) Toast.makeText(this, "Could not reach GitHub", Toast.LENGTH_SHORT).show();
+                if (PAGE_UPDATES.equals(page)) {
+                    build();
+                    focusTag("upd_check");
+                }
+            });
+        });
+        Switch notify = Ui.toggle(this);
+        notify.setChecked(Prefs.updateNotify(this));
+        row("Notify about updates", notify, "Show an update icon in the status pill when a new version is out.")
+                .setOnClickListener(v -> {
+                    Prefs.setUpdateNotify(this, !Prefs.updateNotify(this));
+                    notify.setChecked(Prefs.updateNotify(this));
+                });
+        section("Version");
+        row("Installed", Ui.dimText(this, UpdateChecker.installedVersion(this)), "The version running now.");
+        if (UpdateChecker.available(this)) {
+            TextView state = Ui.dimText(this, "\u203A");
+            LinearLayout go = row("Update to " + Prefs.updateVersion(this), state,
+                    "Download the new version from GitHub and install it.");
+            go.setTag("upd_go");
+            go.setOnClickListener(v -> {
+                if (updating) return;
+                updating = true;
+                state.setText("0 %");
+                UpdateChecker.update(this, pct -> state.setText(pct + " %"), ok -> {
+                    if (ok) {
+                        state.setText("Installing\u2026");
+                    } else {
+                        updating = false;
+                        state.setText("Failed");
+                        Toast.makeText(this, "Update failed. Check the connection.", Toast.LENGTH_LONG).show();
+                    }
+                });
+            });
+        }
+        group(PAGE_CHANGELOG, "Changelog", "Read what changed in the latest versions.");
+    }
+
+    /** Release notes of the latest releases, one focusable row per line so the list scrolls. */
+    private void changelogRows() {
+        boolean any = false;
+        try {
+            org.json.JSONArray all = new org.json.JSONArray(Prefs.updateReleases(this));
+            for (int i = 0; i < all.length(); i++) {
+                org.json.JSONObject r = all.getJSONObject(i);
+                section(r.optString("tag"));
+                String notes = r.optString("notes").replace("\r", "");
+                boolean lines = false;
+                for (String line : notes.split("\n")) {
+                    String t = line.replaceFirst("^[#*\\-\\s]+", "").trim();
+                    if (t.isEmpty()) continue;
+                    row(t, null, "Release notes of " + r.optString("tag") + ".");
+                    lines = true;
+                    any = true;
+                }
+                if (!lines) row("No notes.", null, "Release notes of " + r.optString("tag") + ".");
+            }
+        } catch (org.json.JSONException e) {
+            any = false;
+        }
+        if (!any) row("Check for updates first.", null, "The changelog comes from GitHub.");
     }
 
     /** All permissions with their state; a missing one opens its system page or is granted via adb. */
@@ -571,17 +666,24 @@ public final class SettingsActivity extends Activity {
                 value = Ui.dimText(this, "\u25B2\u25BC");
             } else {
                 Switch sw = Ui.toggle(this);
-                sw.setChecked(!hidden.contains(id));
+                sw.setChecked(!hidden.contains(id) && ControlItems.available(this, id));
                 value = sw;
             }
+            boolean missing = !ControlItems.available(this, id);
             LinearLayout r = row(ControlItems.title(id), value, moving
                     ? "Move with up and down, then press OK."
+                    : missing ? "Not available on this TV, so it is not shown."
                     : "Show or hide this tile. Hold OK to move it.");
+            if (missing) r.setAlpha(0.45f);
             r.setTag("cc:" + id);
             r.setOnClickListener(v -> {
                 if (movingId != null) {
                     movingId = null;
                     rebuildKeeping(v);
+                    return;
+                }
+                if (missing) {
+                    Toast.makeText(this, "Not available on this TV", Toast.LENGTH_SHORT).show();
                     return;
                 }
                 if (id.equals(ControlItems.HOME) && !Prefs.settingsTile(this)
@@ -683,6 +785,7 @@ public final class SettingsActivity extends Activity {
                 } else {
                     String was = page;
                     page = PAGE_SWITCHER_HIDDEN.equals(was) ? PAGE_SWITCHER
+                            : PAGE_CHANGELOG.equals(was) ? PAGE_UPDATES
                             : PAGE_VPN_APPS.equals(was) ? PAGE_HOME : null;
                     build();
                     focusTag("page:" + was);

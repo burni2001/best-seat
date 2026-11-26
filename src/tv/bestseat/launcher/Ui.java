@@ -99,7 +99,7 @@ final class Ui {
             TEXT_DIM_FOCUSED = Color.rgb(80, 84, 92);
             TRACK_OFF = Color.rgb(96, 98, 106);
             CONTROL_PANEL = Color.argb(238, 30, 32, 38);
-            DOCK = Color.argb(128, 30, 30, 30);
+            DOCK = Color.argb(140, 64, 66, 72);
             DOCK_STROKE = Color.argb(26, 255, 255, 255);
             SHADE_END = Color.argb(245, 8, 9, 12);
             MATERIAL = Color.argb(225, 30, 30, 30);
@@ -204,7 +204,7 @@ final class Ui {
     /** Tönung einer Glas-Kachel (über dem unscharfen Hintergrund, falls vorhanden). */
     static int glassTint() {
         // Dunkel so dunkel wie die Statuspille oben (schwarz 110, Wunsch des Nutzers).
-        return light ? Color.argb(80, 255, 255, 255) : Color.argb(110, 0, 0, 0);
+        return light ? Color.argb(88, 255, 255, 255) : Color.argb(110, LiquidGlass.darkLift(), LiquidGlass.darkLift(), LiquidGlass.darkLift());
     }
 
     /** Wie evenShadow, bei Glass ohne Schatten: Er schiene durch die durchsichtige Kachel als dunkler Fleck. */

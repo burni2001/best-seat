@@ -22,7 +22,7 @@ final class ControlIcons {
     static String sourceIcon(String label) {
         String l = label == null ? "" : label.toLowerCase(java.util.Locale.ROOT);
         if (has(l, "switch", "nintendo", "steam deck")) return "src_switch";
-        if (has(l, "playstation", "ps5", "ps4", "ps3", "xbox")) return "src_tower";
+        if (has(l, "playstation", "ps5", "ps4", "ps3", "xbox")) return has(l, "pro") ? "src_tower_pro" : "src_tower";
         if (has(l, "console", "konsole", "game", "gaming", "spiel")) return "src_gamepad";
         if (has(l, "pc", "computer", "mac", "laptop", "notebook", "monitor")) return "src_monitor";
         if (has(l, "blu", "dvd", "disc", "player", "uhd")) return "src_disc";
@@ -157,15 +157,32 @@ final class ControlIcons {
                     c.drawCircle(5.25f, 10, 0.9f, fill);
                     c.drawCircle(18.75f, 14, 0.9f, fill);
                     break;
-                case "src_tower": // stehende Konsole wie PS5: ohne Sockel, oben und unten flach, Seiten zur Mitte hin eingezogen
-                    p.moveTo(8, 3);
-                    p.lineTo(16, 3);
-                    p.quadTo(13.6f, 12, 16, 21);
-                    p.lineTo(8, 21);
-                    p.quadTo(10.4f, 12, 8, 3);
+                case "src_tower": // standing console seen slightly from the side, one seam (like a PS5 Slim)
+                case "src_tower_pro": // same with three stripes (like a PS5 Pro)
+                    p.moveTo(6, 3.5f); // user's drawing: curved front face on the left, side face in perspective
+                    p.cubicTo(6, 3.5f, 7.2f, 3.67f, 7.55f, 3.57f);
+                    p.cubicTo(8.08f, 3.42f, 9.5f, 2.5f, 9.5f, 2.5f);
+                    p.lineTo(18.5f, 4);
+                    p.cubicTo(18.5f, 4, 17.92f, 9.05f, 17.92f, 10.85f);
+                    p.cubicTo(17.92f, 13.05f, 18.5f, 20, 18.5f, 20);
+                    p.lineTo(9.5f, 21.5f);
+                    p.lineTo(6, 20.5f);
+                    p.cubicTo(6, 20.5f, 6.49f, 10.89f, 6.49f, 8.54f);
+                    p.cubicTo(6.49f, 6.64f, 6, 3.5f, 6, 3.5f);
                     p.close();
                     c.drawPath(p, stroke);
-                    c.drawLine(12, 5, 12, 19, stroke);
+                    p.reset(); // edge between front and side
+                    p.moveTo(9.5f, 2.5f);
+                    p.cubicTo(9.5f, 2.5f, 8.88f, 6.21f, 8.88f, 8.45f);
+                    p.cubicTo(8.88f, 10.96f, 9.5f, 21.5f, 9.5f, 21.5f);
+                    c.drawPath(p, stroke);
+                    Paint stripe = new Paint(stroke);
+                    stripe.setStrokeWidth(stroke.getStrokeWidth() * 0.6f);
+                    c.drawLine(9.61f, 8.48f, 17.91f, 11.25f, stripe);
+                    if ("src_tower_pro".equals(id)) {
+                        c.drawLine(9.54f, 6.34f, 17.83f, 9.11f, stripe);
+                        c.drawLine(9.1f, 10.42f, 17.4f, 13.19f, stripe);
+                    }
                     break;
                 case "src_gamepad": // Controller
                     c.drawRoundRect(new RectF(2.5f, 7.5f, 21.5f, 17.5f), 5, 5, stroke);
@@ -209,6 +226,12 @@ final class ControlIcons {
                     c.drawPath(p, stroke);
                     c.drawLine(8, 11.5f, 16, 11.5f, stroke);
                     break;
+                case "update": // arrow down into a tray
+                    c.drawLine(12, 4, 12, 15, stroke);
+                    c.drawLine(7.5f, 10.5f, 12, 15, stroke);
+                    c.drawLine(16.5f, 10.5f, 12, 15, stroke);
+                    c.drawLine(5, 19.5f, 19, 19.5f, stroke);
+                    break;
                 case "controlcenter": // zwei Schalter übereinander (Kontrollzentrum in der Statuspille)
                     c.drawRoundRect(new RectF(4, 4.5f, 20, 11), 3.25f, 3.25f, stroke);
                     c.drawRoundRect(new RectF(4, 13, 20, 19.5f), 3.25f, 3.25f, stroke);
@@ -218,6 +241,7 @@ final class ControlIcons {
                 case ControlItems.SETTINGS: // Zahnrad (TV-Einstellungen)
                     gear(c);
                     break;
+                case ControlItems.QUICK:
                 case ControlItems.HOME: // Schieberegler (Launcher-Einstellungen)
                     c.drawLine(4, 7, 20, 7, stroke);
                     c.drawLine(4, 12, 20, 12, stroke);

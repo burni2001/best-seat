@@ -183,6 +183,7 @@ public final class HomeActivity extends Activity
         if (statusPill != null) {
             statusPill.refreshAvatar();
             statusPill.refreshClock();
+            statusPill.refreshUpdate();
             statusPill.setVisibility(ControlCenterActivity.hidesHomePill() ? View.INVISIBLE : View.VISIBLE);
         }
         // Erscheinungsbild geändert (Einstellung oder Automatik zur vollen Stunde): Seite neu aufbauen.
@@ -192,6 +193,9 @@ public final class HomeActivity extends Activity
             return;
         }
         resumed = true;
+        UpdateChecker.checkIfDue(this, () -> {
+            if (statusPill != null) statusPill.refreshUpdate();
+        });
         noteInput();
         if (builtColumns != 0 && (builtColumns != Prefs.columns(this) || builtNonTv != Prefs.nonTvApps(this)
                 || builtFavorites != Prefs.favorites(this)
@@ -357,7 +361,7 @@ public final class HomeActivity extends Activity
         if (overPkg == null && Prefs.blurEnabled(this) && getWindow() != null
                 && getWindow().getDecorView().isAttachedToWindow()) {
             try {
-                final android.graphics.Bitmap small = android.graphics.Bitmap.createBitmap(192, 108,
+                final android.graphics.Bitmap small = android.graphics.Bitmap.createBitmap(480, 270,
                         android.graphics.Bitmap.Config.ARGB_8888);
                 android.view.PixelCopy.request(getWindow(), small, result -> {
                     boolean ok = result == android.view.PixelCopy.SUCCESS && !blankShot(small);
