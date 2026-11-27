@@ -23,6 +23,12 @@ final class IdleWatch {
      * earlier; 4 min leaves room for the poll interval.
      */
     private static final int NO_LOCK_MAX_MIN = 4;
+    /**
+     * ImageStickingService counts a static OSD while a TPV app such as TV Settings is in front (+1 per
+     * 10 s, reset by a key) and starts the burn-in protection at 12, i.e. after 2 min. Leave room for
+     * the poll interval.
+     */
+    private static final long STATIC_OSD_MAX_MS = 60_000;
     private static final String PROBE = "dumpsys power | grep -m1 mLastUserActivityTime; "
             + "dumpsys power | grep -m1 mWakefulness=; "
             + "dumpsys activity activities | grep -m1 topResumedActivity; "
@@ -102,7 +108,9 @@ final class IdleWatch {
         // mLastUserActivityTime zählt wie SystemClock.uptimeMillis().
         long idle = SystemClock.uptimeMillis() - last;
         if (!bright) minutes = Math.min(minutes, NO_LOCK_MAX_MIN);
-        if (idle < minutes * 60_000L) return;
+        long limit = minutes * 60_000L;
+        if (top.contains(" com.android.tv.settings/")) limit = Math.min(limit, STATIC_OSD_MAX_MS);
+        if (idle < limit) return;
         long idleSince = SystemClock.elapsedRealtime() - idle;
         Log.i(TAG, "idle for " + idle / 1000 + " s in " + top + ", starting screensaver");
         tv.bestseat.launcher.switcher.AdbClient.shell(app, "am start -n " + app.getPackageName()

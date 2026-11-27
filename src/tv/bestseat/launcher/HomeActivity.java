@@ -179,6 +179,7 @@ public final class HomeActivity extends Activity
     @Override
     protected void onResume() {
         super.onResume();
+        IdleWatch.stop();
         current = new java.lang.ref.WeakReference<>(this);
         if (statusPill != null) {
             statusPill.refreshAvatar();
@@ -211,6 +212,8 @@ public final class HomeActivity extends Activity
     protected void onPause() {
         super.onPause();
         resumed = false;
+        // TV Settings is a translucent panel: Home is only paused beneath it, never stopped.
+        IdleWatch.start(this);
         // Die Pille bleibt stehen: Das Kontrollzentrum blendet sie erst aus, wenn seine eigene Pille
         // genau darüber gezeichnet ist (setPillHidden), sonst blitzt die Uhr kurz weg.
         handler.removeCallbacks(saverTimer);
