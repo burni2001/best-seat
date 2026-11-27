@@ -17,10 +17,17 @@ final class IdleWatch {
 
     private static final String TAG = "Launcher.IdleWatch";
     private static final long POLL_MS = 30_000;
+    /**
+     * The TV's burn-in protection starts after 5 min without a key unless some app holds a bright wake
+     * lock (SmartTube does while paused, TV Settings does not). Without a lock the saver must start
+     * earlier; 4 min leaves room for the poll interval.
+     */
+    private static final int NO_LOCK_MAX_MIN = 4;
     private static final String PROBE = "dumpsys power | grep -m1 mLastUserActivityTime; "
             + "dumpsys power | grep -m1 mWakefulness=; "
             + "dumpsys activity activities | grep -m1 topResumedActivity; "
-            + "echo playing=$(dumpsys media_session | grep -c 'state=PLAYING')";
+            + "echo playing=$(dumpsys media_session | grep -c 'state=PLAYING'); "
+            + "echo bright=$(dumpsys power | grep -c SCREEN_BRIGHT_WAKE_LOCK)";
 
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static Context app;
@@ -69,6 +76,7 @@ final class IdleWatch {
         boolean awake = false;
         String top = "";
         int playing = 0;
+        boolean bright = true;
         for (String line : out.split("\n")) {
             line = line.trim();
             if (line.startsWith("mLastUserActivityTime")) {
@@ -79,6 +87,8 @@ final class IdleWatch {
                 top = line;
             } else if (line.startsWith("playing=")) {
                 playing = Integer.parseInt(line.substring(8).trim());
+            } else if (line.startsWith("bright=")) {
+                bright = Integer.parseInt(line.substring(7).trim()) > 0;
             }
         }
         if (last < 0 || !awake || playing > 0) return;
@@ -86,6 +96,7 @@ final class IdleWatch {
         if (top.isEmpty() || top.contains(" " + app.getPackageName() + "/") || top.contains(" org.droidtv.")) return;
         // mLastUserActivityTime zählt wie SystemClock.uptimeMillis().
         long idle = SystemClock.uptimeMillis() - last;
+        if (!bright) minutes = Math.min(minutes, NO_LOCK_MAX_MIN);
         if (idle < minutes * 60_000L) return;
         long idleSince = SystemClock.elapsedRealtime() - idle;
         Log.i(TAG, "idle for " + idle / 1000 + " s in " + top + ", starting screensaver");

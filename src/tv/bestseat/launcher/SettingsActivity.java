@@ -258,8 +258,6 @@ public final class SettingsActivity extends Activity {
                 i -> Prefs.setAppearance(this, i), "Choose a dark or light look, or light only during the day.", "appearance");
         choiceRow("Font", Fonts.NAMES, () -> Prefs.font(this),
                 i -> Prefs.setFont(this, i), "Choose the font for all launcher text.", "font");
-        choiceRow("Clock time zone", Prefs.ZONE_NAMES, () -> Prefs.clockZone(this),
-                i -> Prefs.setClockZone(this, i), "Choose which time the clocks show.", "zone");
         Switch reduce = Ui.toggle(this);
         reduce.setChecked(Prefs.reduceMotion(this));
         row("Reduce motion", reduce, "Fade apps, folders and the Control Center in and out instead of zooming.")
@@ -533,6 +531,16 @@ public final class SettingsActivity extends Activity {
             Prefs.setShowClock(this, !Prefs.showClock(this));
             clockSwitch.setChecked(Prefs.showClock(this));
         });
+        // Slider: left/right in one-hour steps (dispatchKeyEvent), shifts all own clocks from TV time.
+        offsetSlider = new Slider(this, Prefs.clockOffset(this), -12, 12, true);
+        LinearLayout offsetRow = row("Time offset", offsetSlider,
+                "Press left or right to shift the clocks by hours from TV time.");
+        offsetRow.setTag("clock_offset");
+        android.view.View.OnFocusChangeListener of = offsetRow.getOnFocusChangeListener();
+        offsetRow.setOnFocusChangeListener((v, has) -> {
+            of.onFocusChange(v, has);
+            offsetSlider.setFocusedLook(has);
+        });
         Switch vpn = Ui.toggle(this);
         vpn.setChecked(Prefs.showVpn(this));
         row("VPN indicator", vpn, "Show a VPN label at the top while the VPN is on.").setOnClickListener(v -> {
@@ -729,6 +737,8 @@ public final class SettingsActivity extends Activity {
 
     /** Regler „Glass opacity“ auf der Hauptseite (nur mit Glass), sonst null. */
     private Slider opacitySlider;
+    /** Slider "Time offset" on the Home Screen page, else null. */
+    private Slider offsetSlider;
 
     @Override
     public boolean dispatchKeyEvent(android.view.KeyEvent event) {
@@ -741,6 +751,14 @@ public final class SettingsActivity extends Activity {
                 opacitySlider.setValue(opacitySlider.value() + step);
                 Prefs.setGlassOpacity(this, opacitySlider.value());
                 LiquidGlass.opacity = opacitySlider.value();
+            }
+            return true;
+        }
+        if (offsetSlider != null && focusedRow != null && "clock_offset".equals(focusedRow.getTag())
+                && (code == android.view.KeyEvent.KEYCODE_DPAD_LEFT || code == android.view.KeyEvent.KEYCODE_DPAD_RIGHT)) {
+            if (event.getAction() == android.view.KeyEvent.ACTION_DOWN) {
+                offsetSlider.setValue(offsetSlider.value() + (code == android.view.KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : -1));
+                Prefs.setClockOffset(this, offsetSlider.value());
             }
             return true;
         }

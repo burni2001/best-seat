@@ -36,7 +36,8 @@ final class StatusPill extends LinearLayout {
     final FrameLayout controls;
     private ControlIcons.Icon controlsIcon;
     /** Shown when a newer release exists and notifications are on; focusable only in the Control Center. */
-    private final FrameLayout updateIcon;
+    final FrameLayout updateIcon;
+    private final ControlIcons.Icon updateDrawable;
     private String selected;
     private final GradientDrawable pillBg;
     private float depth;
@@ -107,7 +108,8 @@ final class StatusPill extends LinearLayout {
 
         updateIcon = new FrameLayout(activity);
         ImageView uv = new ImageView(activity);
-        uv.setImageDrawable(new ControlIcons.Icon("update", Ui.TEXT).strokeWidth(1.8f));
+        updateDrawable = new ControlIcons.Icon("update", Ui.TEXT).strokeWidth(1.8f);
+        uv.setImageDrawable(updateDrawable);
         int up = dp(6);
         uv.setPadding(up, up, up, up);
         updateIcon.addView(uv, new FrameLayout.LayoutParams(dp(BUTTON_DP), dp(BUTTON_DP)));
@@ -117,8 +119,15 @@ final class StatusPill extends LinearLayout {
         if (withControls) {
             updateIcon.setFocusable(true);
             updateIcon.setClickable(true);
-            updateIcon.setOnFocusChangeListener((v, has) ->
-                    v.animate().scaleX(has ? 1.15f : 1f).scaleY(has ? 1.15f : 1f).setDuration(Ui.ms(140)).start());
+            updateIcon.setOnFocusChangeListener((v, has) -> {
+                // Same focus look as the control center icon: light circle, dark arrow.
+                GradientDrawable d = new GradientDrawable();
+                d.setShape(GradientDrawable.OVAL);
+                d.setColor(has ? Ui.ROW_FOCUSED : Color.TRANSPARENT);
+                v.setBackground(d);
+                updateDrawable.setColor(has ? Ui.TEXT_ON_FOCUS : Ui.TEXT);
+                v.animate().scaleX(has ? 1.15f : 1f).scaleY(has ? 1.15f : 1f).setDuration(Ui.ms(140)).start();
+            });
             updateIcon.setOnClickListener(v -> activity.startActivity(new Intent(activity, SettingsActivity.class)
                     .putExtra(SettingsActivity.EXTRA_PAGE, "updates")));
         }

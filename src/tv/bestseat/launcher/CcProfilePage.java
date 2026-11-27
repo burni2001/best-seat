@@ -131,7 +131,9 @@ final class CcProfilePage {
             holder.addView(badge, blp);
         }
         cell.addView(holder, new LinearLayout.LayoutParams(size, size));
-        TextView text = Ui.text(cc, label, 12, active ? Ui.TEXT : Ui.TEXT_DIM, active);
+        TextView text = Ui.text(cc, label, 12, Color.WHITE, active);
+        // White in both designs; a faint shadow keeps it readable on the light panel.
+        text.setShadowLayer(Ui.dp(cc, 1.5f), 0, Ui.dp(cc, 0.5f), Color.argb(110, 0, 0, 0));
         text.setGravity(Gravity.CENTER);
         text.setSingleLine(true);
         LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
@@ -158,7 +160,6 @@ final class CcProfilePage {
         cell.setOnFocusChangeListener((v, has) -> {
             style.run();
             holder.animate().scaleX(has ? 1.1f : 1f).scaleY(has ? 1.1f : 1f).setDuration(Ui.ms(140)).start();
-            text.setTextColor(has || active ? Ui.TEXT : Ui.TEXT_DIM);
         });
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(Ui.dp(cc, 120),
                 ViewGroup.LayoutParams.WRAP_CONTENT);

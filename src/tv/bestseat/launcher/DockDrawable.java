@@ -56,8 +56,10 @@ final class DockDrawable extends Drawable {
         if (old != null) old.cancel();
         if (from == to) return null;
         ValueAnimator a = ValueAnimator.ofFloat(from, to);
-        a.setDuration(Ui.ms(to > from ? 300 : 180));
-        a.setInterpolator(new DecelerateInterpolator());
+        // Same curve and duration as the tile zoom (TileView.focus): with a different curve the tile
+        // overshot past the bar and its shadow fell beside it until the bar caught up.
+        a.setDuration(Ui.ms(to > from ? 320 : 180));
+        a.setInterpolator(to > from ? new android.view.animation.OvershootInterpolator(1.0f) : new DecelerateInterpolator());
         a.addUpdateListener(v -> {
             if (isLeft) left = (float) v.getAnimatedValue();
             else right = (float) v.getAnimatedValue();

@@ -60,6 +60,37 @@ def armchair(d, x, y, s, color, width, fill=None):
     d.line([(x + s * 0.88, y + h * 0.88), (x + s * 0.88, y + h)], fill=color, width=w)
 
 
+DARK_AMBER = (214, 134, 36)
+
+
+def armchair_logo(d, x, y, s):
+    """Logo armchair as in the user's vector (best-seat-sessel.svg): flat amber parts, layered back, arms, seat,
+    each with a 20-unit seam (1000 units wide). (x, y) = top left, s = width."""
+    k = s / 1000.0
+
+    def box(x0, y0, w, h, grow=0.0):
+        return [x + (x0 - grow) * k, y + (y0 - grow) * k, x + (x0 + w + grow) * k, y + (y0 + h + grow) * k]
+
+    def part(x0, y0, w, h, r):
+        d.rounded_rectangle(box(x0, y0, w, h), r * k, fill=AMBER)
+
+    def seam(x0, y0, w, h, r):
+        # SVG stroke 20 centred 4.5 inside the edge: covers 5.5 outside to 14.5 inside
+        d.rounded_rectangle(box(x0, y0, w, h, 5.5), (r + 5.5) * k, outline=DARK_AMBER, width=max(1, round(20 * k)))
+
+    back, arm_l, arm_r, seat = (160, 0, 680, 508.4, 120), (0, 246, 200, 475.6, 96), (800, 246, 200, 475.6, 96), \
+        (200, 452.93, 600, 246, 72)
+    part(*back)
+    for fx in (76.34, 878.95):
+        d.rectangle([x + fx * k, y + 721.6 * k, x + (fx + 44.7) * k - 1, y + 820 * k], fill=AMBER)
+    seam(*back)
+    for lx in (98.69, 901.3):
+        d.line([(x + lx * k, y + 721.6 * k), (x + lx * k, y + 820 * k)], fill=DARK_AMBER, width=max(1, round(9 * k)))
+    for p in (arm_l, arm_r, seat):
+        part(*p)
+        seam(*p)
+
+
 def v1_armchair():
     img = gradient((22, 26, 40), (6, 7, 12))
     img = glow(img, [80, 200, 1300, 1400], AMBER, 110, 220)
@@ -167,7 +198,7 @@ def v6_wordmark(size=(W, H)):
     d = ImageDraw.Draw(img)
     d.text((x, y), a, font=f, fill=(245, 245, 250))
     d.text((x + wa + gapw, y), b, font=f, fill=(245, 245, 250))
-    armchair(d, sx, sy, ss, AMBER, 18, fill=AMBER)
+    armchair_logo(d, sx, sy, ss)
     return img
 
 
@@ -188,9 +219,7 @@ def icon6():
     img.paste(bg, (0, 0), mask)
     d = ImageDraw.Draw(img)
     s = n * 0.56
-    armchair(d, (n - s) / 2, (n - s * 0.82) / 2, s, AMBER, 40, fill=AMBER)
-    # Kanten der Polster etwas dunkler, damit Lehne, Armlehnen und Sitz lesbar bleiben
-    armchair(d, (n - s) / 2, (n - s * 0.82) / 2, s, (196, 120, 30), 22)
+    armchair_logo(d, (n - s) / 2, (n - s * 0.82) / 2, s)
     return img
 
 

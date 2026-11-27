@@ -13,7 +13,7 @@ public final class Prefs {
     private static final String K_GLASS_OPACITY = "glass_opacity";
     private static final String K_BACKGROUND = "background";
     private static final String K_BLUR_ALL = "blur_all";
-    private static final String K_CLOCK_ZONE = "clock_zone";
+    private static final String K_CLOCK_OFFSET = "clock_offset";
     private static final String K_COLUMNS = "columns";
     private static final String K_FAVORITES = "favorites";
     private static final String K_FONT = "font";
@@ -304,22 +304,27 @@ public final class Prefs {
 
     // ---- W23: Zeitzone der eigenen Uhren (der TV läuft auf UTC)
 
-    static final String[] ZONE_IDS = {"Europe/Berlin", ""};
-    static final String[] ZONE_NAMES = {"Germany", "TV time"};
-
-    static int clockZone(Context c) {
-        int i = getInt(c, K_CLOCK_ZONE, 0);
-        return i >= 0 && i < ZONE_IDS.length ? i : 0;
+    /** Hours the clocks run ahead of TV time (-12..12); default +1 = Germany in winter. */
+    static int clockOffset(Context c) {
+        return Math.max(-12, Math.min(12, getInt(c, K_CLOCK_OFFSET, 1)));
     }
 
-    static void setClockZone(Context c, int index) {
-        put(c, K_CLOCK_ZONE, index);
+    static void setClockOffset(Context c, int hours) {
+        put(c, K_CLOCK_OFFSET, Math.max(-12, Math.min(12, hours)));
     }
 
-    /** Uhr auf die gewählte Zeitzone stellen; leer = Zeitzone des TVs. */
+    /** Zone of the own clocks: TV zone shifted by the chosen hours. */
+    static java.util.TimeZone clockTimeZone(Context c) {
+        int minutes = java.util.TimeZone.getDefault().getOffset(System.currentTimeMillis()) / 60000
+                + clockOffset(c) * 60;
+        int abs = Math.abs(minutes);
+        return java.util.TimeZone.getTimeZone(String.format(java.util.Locale.US, "GMT%s%02d:%02d",
+                minutes < 0 ? "-" : "+", abs / 60, abs % 60));
+    }
+
+    /** Uhr auf die gewählte Zeitzone stellen. */
     static void applyZone(Context c, android.widget.TextClock clock) {
-        String id = ZONE_IDS[clockZone(c)];
-        clock.setTimeZone(id.isEmpty() ? null : id);
+        clock.setTimeZone(clockTimeZone(c).getID());
     }
 
     // ---- Erscheinungsbild: Dunkel, Hell oder Automatisch (tagsüber hell)
@@ -339,9 +344,7 @@ public final class Prefs {
     static boolean isLight(Context c) {
         int mode = appearance(c);
         if (mode != 2) return mode == 1;
-        String id = ZONE_IDS[clockZone(c)];
-        java.util.Calendar now = java.util.Calendar.getInstance(id.isEmpty()
-                ? java.util.TimeZone.getDefault() : java.util.TimeZone.getTimeZone(id));
+        java.util.Calendar now = java.util.Calendar.getInstance(clockTimeZone(c));
         int hour = now.get(java.util.Calendar.HOUR_OF_DAY);
         return hour >= 7 && hour < 19;
     }

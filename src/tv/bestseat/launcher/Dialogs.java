@@ -74,13 +74,15 @@ final class Dialogs {
         try {
             View root = activity.getWindow().getDecorView();
             if (root.getWidth() <= 0 || root.getHeight() <= 0) return null;
-            android.graphics.Bitmap small = android.graphics.Bitmap.createBitmap(480, 270,
+            // 240x135 with radius 4: about twice as soft as before on screen, so big logos behind a wide
+            // panel (Hidden apps) no longer read as shapes, and cheaper to compute.
+            android.graphics.Bitmap small = android.graphics.Bitmap.createBitmap(240, 135,
                     android.graphics.Bitmap.Config.ARGB_8888);
             android.graphics.Canvas c = new android.graphics.Canvas(small);
-            c.scale(480f / root.getWidth(), 270f / root.getHeight());
+            c.scale(240f / root.getWidth(), 135f / root.getHeight());
             root.draw(c);
             c.drawColor(Color.argb(77, 0, 0, 0));
-            return Snapshot.blur(small);
+            return Snapshot.blur(small, 4, 3);
         } catch (RuntimeException e) {
             return null;
         }

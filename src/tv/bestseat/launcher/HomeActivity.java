@@ -1052,6 +1052,7 @@ public final class HomeActivity extends Activity
             row.setOrientation(LinearLayout.HORIZONTAL);
             row.setGravity(Gravity.CENTER_VERTICAL);
             row.setClipChildren(false);
+            row.setClipToPadding(false); // the focused pill grows past the row; its left padding would clip it
             row.setPadding(Ui.dp(this, 6), 0, 0, 0);
             row.addView(Ui.text(this, t.label, 17, Ui.TEXT, true), Ui.fill());
             TextView openPill = Ui.pill(this, "Open");

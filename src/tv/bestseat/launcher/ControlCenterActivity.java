@@ -392,6 +392,22 @@ public final class ControlCenterActivity extends Activity {
             }
             return true;
         }
+        // Left from the control center icon goes to the update icon when it is shown.
+        if (code == KeyEvent.KEYCODE_DPAD_LEFT && pill.controls != null && pill.controls.isFocused()
+                && pill.updateIcon.getVisibility() == View.VISIBLE) {
+            if (event.getAction() == KeyEvent.ACTION_DOWN) pill.updateIcon.requestFocus();
+            return true;
+        }
+        // Left or down from the update icon goes into the control center (the big tile, like W90).
+        if ((code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_DOWN) && pill.updateIcon.isFocused()) {
+            View big = body.getTag() == null && cells.sideColumn() != null
+                    && cells.sideColumn().getParent() instanceof ViewGroup
+                    ? ((ViewGroup) cells.sideColumn().getParent()).getChildAt(0) : null;
+            if (big != null && big.isFocusable()) {
+                if (event.getAction() == KeyEvent.ACTION_DOWN) big.requestFocus();
+                return true;
+            }
+        }
         // W90: Pfeil links vom Schalter-Symbol in der Pille auf die große Kachel (statt schließen).
         if (code == KeyEvent.KEYCODE_DPAD_LEFT && body.getTag() == null && pill.controls != null
                 && pill.controls.isFocused() && cells.sideColumn() != null && cells.sideColumn().getParent() instanceof ViewGroup) {

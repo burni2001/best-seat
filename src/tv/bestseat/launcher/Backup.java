@@ -148,8 +148,7 @@ final class Backup {
             if (out.isEmpty() || !out.matches("\\d+")) return null;
             SimpleDateFormat f = new SimpleDateFormat("d MMM yyyy, HH:mm", Locale.ENGLISH);
             // Gleiche Zeitzone wie die Uhren (der TV läuft auf UTC).
-            String zone = Prefs.ZONE_IDS[Prefs.clockZone(context)];
-            if (!zone.isEmpty()) f.setTimeZone(java.util.TimeZone.getTimeZone(zone));
+            f.setTimeZone(Prefs.clockTimeZone(context));
             return f.format(new Date(Long.parseLong(out) * 1000L));
         } catch (Exception e) {
             return null;

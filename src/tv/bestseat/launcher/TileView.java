@@ -85,7 +85,8 @@ final class TileView extends FrameLayout {
         setContentDescription(tile.label);
         // Radius wie tvOS: 30 bei 250 Breite (12 %).
         radius = width * 0.12f;
-        setOutlineProvider(new RoundedOutline(radius));
+        outline = new RoundedOutline(radius);
+        setOutlineProvider(outline);
         setClipToOutline(true);
         setElevation(Ui.dp(context, 2));
         if (Ui.light && tile.kind != Tile.FOLDER) {
@@ -238,7 +239,8 @@ final class TileView extends FrameLayout {
             setRotationX(-dy * 9f);
             // Fokus: Schatten deutlicher (höher und im hellen Design dunkler).
             if (Ui.light && tile.kind != Tile.FOLDER) setOutlineSpotShadowColor(android.graphics.Color.argb(190, 0, 0, 0));
-            animate().scaleX(FOCUS_SCALE).scaleY(FOCUS_SCALE).translationZ(24 * dp)
+            raise(true, dp);
+            animate().scaleX(FOCUS_SCALE).scaleY(FOCUS_SCALE)
                     .rotationX(0f).rotationY(0f)
                     .setInterpolator(new OvershootInterpolator(1.0f)).setDuration(Ui.ms(320)).start();
             if (!Prefs.shine(getContext())) return;
@@ -256,11 +258,47 @@ final class TileView extends FrameLayout {
                     .withEndAction(() -> gloss.setAlpha(0f)).start();
         } else {
             if (Ui.light && tile.kind != Tile.FOLDER) setOutlineSpotShadowColor(android.graphics.Color.argb(110, 0, 0, 0));
-            animate().scaleX(1f).scaleY(1f).translationZ(0f).rotationX(0f).rotationY(0f)
+            raise(false, dp);
+            animate().scaleX(1f).scaleY(1f).rotationX(0f).rotationY(0f)
                     .setInterpolator(new DecelerateInterpolator()).setDuration(Ui.ms(180)).start();
             gloss.animate().cancel();
             gloss.setAlpha(0f);
         }
+    }
+
+    private RoundedOutline outline;
+    private ValueAnimator shadowAnim;
+    /** Shadow strength at the start of a focus and at the end of a focus loss, before it is swapped for the resting shadow. */
+    private static final float SHADOW_FLOOR = 0.25f;
+
+    /**
+     * Focus shadow without moving geometry: the height jumps to its final value at once and only the
+     * strength of the shadow fades. Animating the height made the shadow's size and softness change
+     * every frame, which looked like it unfolded (clearly at the edges of the favourites bar).
+     * The focused tile sits 1 dp above the one losing focus, so it stays on top while that one fades.
+     */
+    private void raise(boolean up, float dp) {
+        if (shadowAnim != null) shadowAnim.cancel();
+        float from = up ? SHADOW_FLOOR : outline.currentShadowAlpha();
+        float to = up ? 1f : SHADOW_FLOOR;
+        if (up) setTranslationZ(25 * dp);
+        else if (getTranslationZ() > 24 * dp) setTranslationZ(24 * dp);
+        final ValueAnimator a = ValueAnimator.ofFloat(from, to);
+        shadowAnim = a;
+        a.setDuration(Ui.ms(up ? 320 : 180));
+        a.setInterpolator(new DecelerateInterpolator(1.5f));
+        a.addUpdateListener(an -> {
+            outline.shadowAlpha((float) an.getAnimatedValue());
+            invalidateOutline();
+        });
+        // AnimEnd also fires on cancel: only a finished fade-out hands over to the resting shadow.
+        a.addListener(new AnimEnd(() -> {
+            if (up || shadowAnim != a || a.getAnimatedFraction() < 1f) return;
+            setTranslationZ(0f);
+            outline.shadowAlpha(1f);
+            invalidateOutline();
+        }));
+        a.start();
     }
 
     /** OK gedrückt: Kachel gibt nach (push-in); losgelassen: federt auf Fokusgröße zurück. */

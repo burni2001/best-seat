@@ -153,10 +153,12 @@ public final class ScreensaverActivity extends Activity implements SurfaceHolder
     private void scheduleRelease(long idleSince) {
         handler.removeCallbacks(releaseTask);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        long timeout = Settings.System.getLong(getContentResolver(), Settings.System.SCREEN_OFF_TIMEOUT, 1_800_000);
+        // Only the TV's "Shut-off timer when inactive" (secure sleep_timeout) counts: the Android
+        // screen_off_timeout is not one of the TV's own timers and released the lock too early.
+        long timeout = 1_800_000;
         try {
             long sleep = Settings.Secure.getLong(getContentResolver(), "sleep_timeout");
-            if (sleep > 0) timeout = Math.min(timeout, sleep);
+            if (sleep > 0) timeout = sleep;
         } catch (Exception ignored) {
         }
         long delay = Math.max(10_000, idleSince + timeout - SystemClock.elapsedRealtime());

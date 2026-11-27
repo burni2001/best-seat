@@ -8,7 +8,7 @@ import android.graphics.RectF;
 import android.view.View;
 
 /**
- * Schieberegler für eine Einstellungszeile (0..100): Schiene, gefüllter Teil, Knopf und Zahl.
+ * Schieberegler für eine Einstellungszeile (Standard 0..100): Schiene, gefüllter Teil, Knopf und Zahl.
  * Bedient wird er über die Zeile mit Links/Rechts; die Farben folgen dem Fokus der Zeile.
  */
 final class Slider extends View {
@@ -19,11 +19,22 @@ final class Slider extends View {
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF rect = new RectF();
     private int value;
+    private final int min;
+    private final int max;
+    private final boolean signed;
     private boolean focused;
 
     Slider(Context context, int value) {
+        this(context, value, 0, 100, false);
+    }
+
+    /** Range min..max; signed shows a leading + for positive values (hour offsets). */
+    Slider(Context context, int value, int min, int max, boolean signed) {
         super(context);
-        this.value = value;
+        this.min = min;
+        this.max = max;
+        this.signed = signed;
+        this.value = Math.max(min, Math.min(max, value));
         paint.setTypeface(Fonts.get(context, Fonts.MEDIUM));
         paint.setTextSize(Ui.dp(context, 14));
         paint.setTextAlign(Paint.Align.RIGHT);
@@ -36,7 +47,7 @@ final class Slider extends View {
     }
 
     void setValue(int v) {
-        value = Math.max(0, Math.min(100, v));
+        value = Math.max(min, Math.min(max, v));
         invalidate();
     }
 
@@ -56,13 +67,13 @@ final class Slider extends View {
         paint.setColor(Color.argb(70, Color.red(ink), Color.green(ink), Color.blue(ink)));
         rect.set(left, cy - h / 2, right, cy + h / 2);
         c.drawRoundRect(rect, h / 2, h / 2, paint);
-        float x = left + (right - left) * value / 100f;
+        float x = left + (right - left) * (value - min) / (float) (max - min);
         paint.setColor(ink);
         rect.set(left, cy - h / 2, x, cy + h / 2);
         c.drawRoundRect(rect, h / 2, h / 2, paint);
         c.drawCircle(x, cy, d * 7, paint);
         float tx = getWidth();
         float ty = cy - (paint.descent() + paint.ascent()) / 2f;
-        c.drawText(String.valueOf(value), tx, ty, paint);
+        c.drawText((signed && value > 0 ? "+" : "") + value, tx, ty, paint);
     }
 }
